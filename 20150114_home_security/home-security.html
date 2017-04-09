@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>ホームセキュリティを自作した話</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="reveal.js-2.6.2/css/reveal.min.css">
+    <link rel="stylesheet" href="reveal.js-2.6.2/css/theme/default.css" id="theme">
+
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="reveal.js-2.6.2/lib/css/zenburn.css">
+    <script src="reveal.js-2.6.2/lib/js/head.min.js"></script>
+    <script src="reveal.js-2.6.2/js/reveal.min.js"></script>
+
+    <!--[if lt IE 9]>
+    <script src="reveal.js-2.6.2/lib/js/html5shiv.js"></script>
+    <![endif]-->
+</head>
+
+<body>
+    <div class="reveal">
+
+        <!-- Any section element inside of this container is displayed as a slide -->
+        <div class="slides">
+            <section>
+                <h1>本格ホーム<br/>セキュリティ<br/>を自作する</h1>
+                <p>
+                    <small>Written by 中野 豊 @ AT部 / GitHub: <a href="https://github.com/nknytk">nknytk</a></small>
+                </p>
+            </section>
+
+            <section>
+                <h2>ホームセキュリティって?</h2>
+                <ul>
+                    <li>
+                        検知
+                        <ul>
+                            <li>窓の開閉センサー</li>
+                            <li>カメラの動体検知</li>
+                            <li>煙センサー</li>
+                            <li>温度センサー</li>
+                            <li>音量センサー</li>
+                        </ul>
+                    </li>
+                    <li>
+                        通知
+                        <ul>
+                            <li>電話</li>
+                            <li>メール</li>
+                        </ul>
+                    </li>
+                    <li>
+                        対処
+                        <ul>
+　　　　　　　　　　　　　　　　　　　　　　　　　　　　<li>状況記録</li>
+                            <li>警備員駆けつけ</li>
+                            <li>通報</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>業者に頼むと<br/>数十万円コース</h2>
+                <ul>
+                    <li>
+                        <h3>初期費用</h3>
+                        <ul>
+                            <li>工事費数万円</li>
+                            <li>機器の購入数十万円(レンタル可)</li>
+                            <li>センサー増やすと費用が上がる</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <h3>運用コスト</h3>
+                        <ul>
+                            <li>機器買い取りで 3000円/月 ~</li>
+                            <li>機器レンタルで 4000円/月 ~</li>
+                            <li>センサー増やすと費用が上がる</li>
+                        </ul>
+                    </li>
+                    <li><h3>高いよ無理だよ</h3></li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>1万円で自作!</h2>
+                <ul>
+                    <li>
+                        検知
+                        <ul>
+                            <li>窓の開閉センサー</li>
+                            <li>カメラの動体検知</li>
+                            <li><del>煙センサー</del></li>
+                            <li><del>温度センサー</del></li>
+                            <li><del>音量センサー</del></li>
+                        </ul>
+                    </li>
+                    <li>
+                        通知
+                        <ul>
+                            <li>電話</li>
+                            <li>メール</li>
+                        </ul>
+                    </li>
+                    <li>
+                        対処
+                        <ul>
+　　　　　　　　　　　　　　　　　　　　　　　　　　　　<li>状況記録</li>
+                            <li><del>警備員</del>自分が駆けつけ</li>
+                            <li>(自分で)通報</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>デモ</h2>
+                <video src="resource/demo.mp4" controls/>
+            </section>
+
+            <section>
+                <h1>用意するもの</h1>
+            </section>
+
+            <section>
+                <h3>ハードウェア</h3>
+                <table>
+                    <tr><td>Raspberry Pi Type b+ (Ubuntu PCで代用可)</td><td>5000円</td></tr>
+                    <tr><td>MicroSD 4GB以上 (Raspberry Pi用)</td><td>500円</td></tr>
+                    <tr><td>USB ACアダプタ &amp; USBケーブル (Raspberry Pi用)</td><td>1000円</td></tr>
+                    <tr><td>USB Webカメラ * 2</td><td>2500円</td></tr>
+                    <tr><td>基板部品</td><td>1000円</td></tr>
+                    <tr><td>スイッチ部品</td><td>1000円</td></tr>
+                    <tr><td>Androidのスマホ</td><td>-</td></tr>
+                    <tr><td><strong>合計</strong></td><td><strong>11000円</strong></td></tr>
+                </table>
+                <h3>運用費</h3>
+                <table>
+                    <tr><td>電気代</td><td>50円/月</td></tr>
+                    <tr><td>Twillio番号代</td><td>108円/月</td></tr>
+                    <tr><td>Twillio電話代</td><td>15円~/call</td></tr>
+                </table>
+            </section>
+
+            <section>
+                <h2>Raspberry Pi と 基板</h2>
+                <img src="resource/rpi.jpg"/>
+            </section>
+
+            <section>
+                <h2>窓の開閉センサー</h2>
+                <video src="resource/window-switch-movie.mp4" controls/>
+            </section>
+
+            <section>
+                <h2>窓開閉センサーの回路</h2>
+                <img src="resource/circuit.jpg"/>
+            </section>
+
+            <section>
+                <h2>カメラ(1)</h2>
+                <img src="resource/camera-picture.jpg"/>
+            </section>
+
+            <section>
+                <h2>カメラ(2)</h2>
+                <video src="resource/camera-movie.mp4" controls/>
+            </section>
+
+            <section>
+                <h1>プログラム</h1>
+            </section>
+
+            <section>
+                <h2>実装言語</h2>
+                <ul>
+                    <li>
+                        <h3>本体</h3>
+                        <ul>
+                            <li>アプリケーション: Python 約1700行</li>
+                            <li>設定ファイル: JSON 約40行</li>
+                            <li>セットアップツール: シェルスクリプト 約100行</li>
+                            <li><a href="https://github.com/nknytk/home-recorder">コードはGithubに掲載</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <h3>Android Client</h3>
+                        <ul>
+                            <li>Java 約1000行</li>
+                            <li><a href="https://github.com/nknytk/home-recorder-client">コードはGithubに掲載</a></li>
+                            <li>(実装が下手なので無駄に長い)</li>
+                        </ul>
+                    </li>
+                    <li>(行数には、空行・コメント・実稼働に不要な検証コードも含む)</li>
+                    <li>テストコード? なにそれおいしいの? (＾q＾)</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>処理の概要</h2>
+                <img src="resource/flow.jpg"/>
+            </section>
+
+            <section>
+                <h2>在宅確認</h2>
+                <img src="resource/udp.jpg"/>
+            </section>
+
+            <section>
+                <h2>異常検知、通知、記録<br/>全てプラグイン形式</h2>
+                <h2>-&gt; 機能拡張が簡単</h2>
+            </section>
+
+            <section>
+                <h2>デフォルトプラグイン</h2>
+                <ul>
+                    <li>異常検知
+                        <ul>
+                            <li>GPIO入力ピンの状態</li>
+                            <li>カメラの画像</li>
+                        </ul>
+                    </li>
+                    <li>通知
+                        <ul>
+                            <li>メール</li>
+                            <li>Twillioで電話</li>
+                        </ul>
+                    </li>
+                    <li>記録
+                        <ul>
+                            <li>連続写真(カメラごとに動画と排他)</li>
+                            <li>動画(カメラごとに連続写真と排他)</li>
+                            <li>マイクの音</li>
+                            <li>記録したものを添付してメール</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h1>だいたいできた</h1>
+            </section>
+
+            <section>
+                <h1>あとちょっと!</h1>
+            </section>
+
+            <section>
+                <h2>あとたったこれだけ!</h2>
+                <div>
+                    家の外から各センサーの状態をリアルタイムで見られるようにしたい。
+                    サーバとクライアントのペア登録をボタン一発でできるようにしたい。
+                    クライアントアプリから設定変更できるようにしたい。
+                    権限の違うクライアントを作りたい。全部設定可能な管理者、常に在宅確認の対象となる一般ユーザー、一時的に在宅確認の対象となるゲストなど。
+                    検知した異常の種類によってその後の処理を変えたい。
+                    通知が完了するのを待たず、メールサーバの返信待ちなどでCPUがidleの時から記録を始めてしまいたい。
+                    サーバとクライアントを相互に動作確認させたい。
+                    複数サーバで連携してクラスタ構成を取れるようにしたい。
+                    iOSクライアント作りたい。Windowsクライアント作りたい。
+                    大音量を異常として検知したい。暗視カメラを追加したい。赤外線センサーを追加したい。
+                    煙センサーを追加したい。温度センサーを追加したい。
+                    画像の処理が超適当なのを直したい。NASに記録を残したい。オンラインストレージに記録を残したい。
+                    クライアントアプリにプッシュ通知したい。
+                    ちゃんとREADME書く。
+                    エラー処理が超適当なのを直したい。ログが超適当なのを直したい。
+                    古い記録ファイルは自動削除したい。
+                    設定ファイル分割しすぎた。まとめたい。
+                    基板むき出しってどうなの?カバーくらいつけるべきじゃない?
+                    配線が多すぎて不便。ワイヤレスにできないか?
+                    自動アップデート機能を付けたい。プラグインをワンタッチで導入できるようにしたい。
+                    ウェアラブル機器と連動して住人が寝たら監視ON、起きたら監視OFFにしたい。
+                </div>
+            </section>
+
+            <section>
+                <h2>「あとちょっと」<br/>を進める燃料を!</h2>
+                <ul>
+                    <li class="fragment">ダウンロードして使ってみる</li>
+                    <li class="fragment">Githubで星つける</li>
+                    <li class="fragment">パッチを送る</li>
+                    <li class="fragment">プラグインを送る</li>
+                    <li class="fragment">NAS記録プラグイン開発用のNASを贈る</li>
+                    <li class="fragment">iOSクライアント開発用のMacとiPhoneを贈る</li>
+                    <li class="fragment">守りたくなるような立派な家を買い与える</li>
+                </ul>
+            </section>
+
+            <section>
+                <h1>ご静聴ありがとうございました</h1>
+            </section>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        // Full list of configuration options available here:
+        // https://github.com/hakimel/reveal.js#configuration
+        Reveal.initialize({
+            controls: true,
+            progress: true,
+            history: true,
+            center: true,
+
+            theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+            transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+            // Parallax scrolling
+            // parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+            // parallaxBackgroundSize: '2100px 900px',
+
+            // Optional libraries used to extend on reveal.js
+            dependencies: [
+                { src: 'reveal.js-2.6.2/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+                { src: 'reveal.js-2.6.2/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                { src: 'reveal.js-2.6.2/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                { src: 'reveal.js-2.6.2/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+                { src: 'reveal.js-2.6.2/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+                { src: 'reveal.js-2.6.2/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+            ]
+        });
+
+    </script>
+</body>
+</html>
