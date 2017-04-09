@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+　 <meta charset="UTF-8" />
+  <title>IoT司書育成 中間報告</title>
+  <link rel="stylesheet" href="./reveal.js-3.4.0/css/reveal.css">
+  <link rel="stylesheet" href="./reveal.js-3.4.0/css/theme/night.css">
+</head>
+
+<body>
+<div class="reveal"><div class="slides">
+
+<section>
+  <h1>IoT司書育成<br/>中間報告</h1>
+</section>
+
+<section>
+  <h3>突然ですが、我が家には<br/>2人の住人がいます</h3>
+
+  <table class="fragment fade-in"><tbody>
+    <tr><td>読書が趣味の佐藤さん</td><td>読書が趣味の田中さん</td></tr>
+    <tr>
+      <td><div class="fragment grow"><div class="fragment shrink"><img src="./res/sato.jpg" width="380px" height="380px"/></div></div></td>
+      <td><div class="fragment grow"><div class="fragment shrink"><img src="./res/tanaka.jpg" width="380px" height="380px"></div></div></td>
+    </tr>
+  </tbody></table>
+</section>
+
+<section>
+  <h3>本の管理をするために<br/>司書を雇うことにしました</h3>
+  <img src="./res/portrait.jpg" />
+</section>
+
+<section>
+  <h3>司書の働きぶりをご覧ください</h3>
+  <iframe width="784" height="441" src="https://www.youtube.com/embed/vwUpuG7dlB4" frameborder="0" allowfullscreen></iframe>
+  <!--<video src="./res/rental.mp4" controls/>-->
+</section>
+
+<section>
+  <h3>こんなこともしてくれます</h3>
+  <div>
+    写真を撮って送ってくれる
+    <iframe width="784" height="441" src="https://www.youtube.com/embed/hZENdrhtFD0" frameborder="0" allowfullscreen></iframe>
+  　　<!--<video src="./res/photo.mp4" controls/>-->
+  </div>
+</section>
+
+<section>
+  <h3>こんなこともしてくれます</h3>
+  <div>
+    天気予報を教えてくれる
+    <iframe width="784" height="441" src="https://www.youtube.com/embed/dQX6DjClEP4" frameborder="0" allowfullscreen></iframe>
+  　　<!--<video src="./res/weather.mp4" controls/>-->
+  </div>
+</section>
+
+<section>
+  <h3>司書の中身</h3>
+  <div>
+    Raspberry Pi + オープンソースのソフトウェア群
+  </div>
+  <img src="./res/architecture.jpg"/>
+</section>
+
+<section>
+  <h3>司書の中身のポイント</h3>
+  <div>
+    <ul>
+      <li>ネットワークを使うのは、<br/>メールを送る時・天気予報を調べる時だけ</li>
+      <li>音声認識・画像認識・音声出力は全て内部で完結</li>
+      <li>
+        特に、人と本の識別に使っているディープラーニングが<br/>
+        <strong><font color="red">学習も含めてRaspberry Pi上で動作!</font></strong>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h3>通常のIoT + ディープラーニング</h3>
+  <div>
+    学習は全部サーバ側に任せ、サーバで<br/>
+    <ul>
+      <li>複雑なモデルに</li>
+      <li>大量の訓練データを与え</li>
+      <li>大量の計算機を使って</li>
+      <li>長時間学習する</li>
+    </ul><br/>
+    ことで、高い精度を目指す<br/><br/>
+    IoT機器はデータ取得に専念するか、<br/>
+    サーバで学習した結果を持ってきて使うだけ<br/>
+　　　　<br/>
+  </div>
+</section>
+
+<section>
+  <h3>今回のIoT + ディープラーニング</h3>
+  <div>
+    サーバ不要にしたい! でも賢い司書が欲しい!! ので
+    <ul>
+      <li>比較的簡単なモデルに</li>
+      <li>少量の写真を与え</li>
+      <li>Raspberry Pi 1台で</li>
+      <li>数分だけ学習する</li>
+    </ul><br/>
+    これで人・本を実用的に判別できる精度を目指す
+  </div>
+</section>
+
+<section>
+  <h3>人・本の判別に使用したモデル</h3>
+  <div>
+    シンプルで計算量が少ないモデルを用意<br/>
+    <img src="./res/cnn_model.jpg" height="500px"/><br/>
+  </div>
+</section>
+
+<section>
+  <h3>モデルの性能評価</h3>
+  <div>
+    <ul>
+      <li>そっくりさん 2人 x 4組 = 8人 の顔写真を292枚用意</li>
+      <li>72枚だけ学習に使う</li>
+      <li>学習後に、残り220枚で<br/>写真から人をどれだけ当てられるか試験</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h3>試験結果</h3>
+  <div>
+    最高正解率48.6%。厳しい。。<br/>
+    <img src="./res/accuracy1.jpg"/>
+  </div>
+</section>
+
+<section>
+  <h3>そこで転移学習</h3>
+  <div>
+    特徴量の取り出し方だけを事前にサーバで学習させ、<br/>
+    特徴量を使った人・本の判別はRaspberry Piで学習する<br/>
+    <ol>
+      <li>120人16576枚の訓練データを作成</li>
+      <li>サーバで200epoch学習させる(2日半くらい)</li>
+      <li>学習済みモデルをRaspberry Piに持ってくる</li>
+      <li><strong><font color="red">畳み込み層の重みを固定し、全結合層だけ</font></strong><br/>識別したい人の画像で、再学習</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <h3>人・本の判別に使用したモデル</h3>
+  <div>
+    特徴量取り出しだけ事前に学習する<br/>
+    <img src="./res/cnn_model2.jpg" height="500px"/><br/>
+  </div>
+</section>
+
+<section>
+  <h3>転移学習の成果</h3>
+  <div>
+    最高正解率 48.6% =&gt; 63.6%<br/>
+    <img src="./res/accuracy2.jpg"/>
+  </div>
+</section>
+
+<section>
+  <h3>なお、学習データを220枚に増やすと</h3>
+  <div>
+    転移学習により<br/>
+    <ul>
+      <li>最高正解率向上 70.8% =&gt; 83.3%</li>
+      <li>少ない学習回数で正解率が上昇</li>
+    </ul>
+    <img src="./res/accuracy3.jpg"/>
+  </div>
+</section>
+
+<section>
+  <h3>学習にかかる時間</h3>
+  <div>
+    <ul>
+      <li>約50秒/人 x 人数分の時間</li>
+      <li>追加登録が1人でも全員分再学習の必要あり</li>
+      <li>速くはないが、50人分でも昼休み中には学習が終わると考えると許容かな。。</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h3>次の課題</h3>
+  <div>
+    本の領域を切り出す処理(ディープラーニングの前段階)<br/>
+    の精度が悪く、遺影スタイルが必要なことが多い問題<br/>
+    <img src="./res/iei_style.jpg" />
+  </div>
+</section>
+
+<section>
+  <h3>ソースコード</h3>
+  <div>
+    GitHubで公開しています
+    <ul>
+      <li><a target="blank" href="https://github.com/nknytk/libran">nknytk / libran</a>
+        <ul>
+          <li>図書館司書の中身</li>
+        </ul>
+      </li>
+      <li><a target="blank" href="https://github.com/nknytk/face-classifier-cnn">nknytk / face-classifier-cnn</a>
+　　　　　　　<ul>
+         <li>本・顔の認識に使ったモデルの定義</li>
+         <li>学習データ作成補助ツール</li>
+         <li>性能検証詳細レポート</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</section>
+
+</siv></div>
+<script src="./reveal.js-3.4.0/js/reveal.js"></script>
+<script>Reveal.initialize();</script>
+</body>
+</html>
