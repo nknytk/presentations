@@ -1,0 +1,250 @@
+<!DOCTYPE hmlt>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ラズパイで準リアルタイムオブジェクト検出</title>
+  <link rel="stylesheet" href="reveal.js/css/reveal.css">
+  <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+  <style type="text/css">
+    .reveal h1,
+    .reveal h2,
+    .reveal h3,
+    .reveal h4,
+    .reveal h5,
+    .reveal h6 {
+      text-transform: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="reveal"><div class="slides">
+
+    <section id="title">
+      <h1>Raspberry Piで<br/>準リアルタイム<br>オブジェクト検出</h1>
+    </section>
+
+    <section id="summary">
+      <h2>ざっくり言うと</h2>
+      <div>
+        YOLOを参考に、ラズパイのCPUでも準リアルタイムでObject Detectionを行えるCNN物体検出器を作った
+      </div>
+    </section>
+
+    <section id="demo-setting">
+      <h2>デモ</h2>
+      <div>
+        <ol>
+          <li>ノートPCで著作権フリーの動画を再生</li>
+          <li>PCの画面をUSB Webカメラで撮影</li>
+          <li>ラズパイで物体検出</li>
+          <li>ラズパイに繋いだディスプレイに結果描画</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="demo-image">
+      <div>
+        <img src="resource/demosystem.jpg"/>
+      </div>
+    </section>
+
+    <section id="demo1">
+      <h2>顔の検出: 6.5FPS</h2>
+      <video src="resource/demo1.mp4" controls/>
+    </section>
+
+    <section id="demo2">
+      <h2>3物体検出(高FPS版): 4.4FPS</h2>
+      <div>
+        <span style="color:red">赤=乗り物</span>,
+        <span style="color:green">緑=動物</span>,
+        <span style="color:blue">青=人</span>
+      </div>
+      <video src="resource/demo2.mp4" controls/>
+    </section>
+
+    <section id="demo3">
+      <h2>3物体検出(低遅延版): 3.5FPS</h2>
+      <div>
+        <span style="color:red">赤=乗り物</span>,
+        <span style="color:green">緑=動物</span>,
+        <span style="color:blue">青=人</span>
+      </div>
+      <video src="resource/demo3.mp4" controls/>
+    </section>
+
+    <section>
+      <h2>どうやって作ったのか説明</h2>
+      <h2 class="fragment">の前に</h2>
+      <h1 class="fragment">ラズパイの性能紹介</h1>
+    </section>
+
+    <section id="raspberry-pi">
+      <h2>Raspberry Pi 3 Model B</h2>
+      <div>
+        <ul>
+          <li>名刺サイズのシングルボードコンピュータ</li>
+          <li>Linuxが動く</li>
+          <li>CPU ARMv8 4Core</li>
+          <li>Memory 1GB</li>
+          <li>Disk 16GB(microSD)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="rp-cpu1">
+      <h2>ラズパイのCPU性能</h2>
+      <div>
+        <img src="resource/opencv-compile-speed.png"/>
+      </div>
+    </section>
+
+    <section id="rp-cpu2">
+      <h2>ラズパイのCPU性能</h2>
+      <div>
+        <img src="resource/cnn-inference-speed.png"/>
+      </div>
+    </section>
+
+    <section id="">
+      <h2>このCPU性能でリアルタイム処理をするためには</h2>
+      <div class="fragment">
+        <h1 id="to_be_deleted">1. 外部APIを叩く!!</h1>
+        <h1 id="trigger1" class="fragment highlight-red">2. モデル軽量化!!</h1>
+      </div>
+    </section>
+
+    <section id="model-selection">
+      <h2>モデル選択</h2>
+      <div>
+        YOLOをベースに作ることにした
+        <ul>
+          <li>RCNN系
+            <ul>
+              <li>重すぎて無理</li>
+            </ul>
+          </li>
+          <li>SSD
+            <ul>
+              <li>ノード数を減らしたら成立しなくなりそう</li>
+              <li>複雑で実装できる自信がなかった</li>
+            </ul>
+          </li>
+          <li>YOLO
+            <ul>
+              <li>パラメータを削っても成立しそう</li>
+              <li>実装できそうと思った(v1なら)</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="yolo">
+      <h2>YOLO</h2>
+      <img src="resource/yolo.png">
+    </section>
+
+    <section id="mobile-yolo">
+      <h2>今回作ったやつ</h2>
+      <img src="resource/mobile-yolo.png">
+    </section>
+
+    <section id="cnn">
+      <h2>今回作ったやつのCNN部</h2>
+      <ul>
+        <li>MobileNetベース</li>
+        <li>元のフィルタ数は全て32の倍数<br/>=&gt; 全中間層のフィルタ数をn/32に変更して軽量化</li>
+        <li>chainerで実装</li>
+      <ul>
+     <table style="color:white">
+       <tr><th>n</th><th>モデルサイズ</th></tr>
+       <tr><td>32(MobileNet Original)</td><td>7.2MB</td></tr>
+       <tr><td>3(顔検出)</td><td>132KB</td><tr>
+       <tr><td>6(3物体検出)</td><td>366KB</td></tr>
+     </table>
+    </section>
+
+    <section id="data">
+      <h2>学習データ</h2>
+      <ul>
+        <li>Pascal VOC 2007全データ + 2012学習データ</li>
+        <li>顔検出: "head"を含む画像全てと、<br/>含まない画像からランダムに選んだ2%を使用</li>
+        <li>3物体検出: 全画像を使い、オブジェクトをグループ化<br/>
+          例: catもdogもhorseも全て"animal"として1ラベルに
+        </li>
+        <li>データ拡張: 左右反転、ランダムクロップ</li>
+      </ul>
+    </section>
+
+
+    <section id="training">
+      <h2>GPUの活用</h2>
+      <ul>
+        <li>これだけ軽いモデルでも、GPUのほうが学習が速い</li>
+        <li>モデルが軽いため、GPUがコアもメモリもダダ余り</li>
+        <li>バッチサイズをガンガン上げる! <span class="fragment">=&gt; 精度が落ちた...</span></li>
+        <li class="fragment">パラメータを少しずつ変えた学習ジョブを並列で実行し、最善パターンを採用</li>
+      </ul>
+    </section>
+
+    <section id="">
+      <h2>デモのシステム構成(高FPS版)</h2>
+      <img src="resource/system-architecture.png">
+      <ul>
+        <li>worker processで分散処理し、CPUを使い切る</li>
+        <li>検出結果をバッファし、撮影時刻でソートしてから描画する必要があることが遅延の一因になっている</li>
+      </ul>
+    </section>
+
+    <section id="">
+      <h2>デモのシステム構成(低遅延版)</h2>
+      <img src="resource/system-architecture2.png">
+      <ul>
+        <li>カメラ内バッファをbusy loopで捨て続ける</li>
+        <li>検出完了が遅れたフレームは描画せず捨てる</li>
+        <li>遅延は減る(1.54=&gt;0.90)がFPSも落ちる(4.4=&gt;3.5)</li>
+      </ul>
+    </section>
+
+
+    <section id="">
+      <h2>今後</h2>
+      <ul>
+        <li>
+          <h3>精度</h3>
+          <p>もうちょっと頑張る</p>
+        </li>
+        <li>
+          <h3>Javascriptに移植</h3>
+          <ul>
+             <li>
+               Keras.jsかTensorFlow.jsに移植して<br/>
+               スマホサイトに組み込み、<br/>
+               ブラウザでリアルタイム処理させたい
+             </li>
+            <li>ギガが減る心配なく配れるサイズ</li>
+            <li>GPU支援が効くらしい</li>
+          </ul>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>ご清聴ありがとうございました</h2>
+      <div>ソースコードは<a href="https://github.com/nknytk/ml-study/tree/master/object_detection">こちら</a></div>
+    </section>
+
+  </div></div>
+  <script src="reveal.js/js/reveal.js"></script>
+  <script>
+    Reveal.initialize();
+    Reveal.addEventListener( 'fragmentshown', function( event ) {
+      if (event.fragment.id == "trigger1") {
+        document.getElementById("to_be_deleted").setAttribute("style", "text-decoration: line-through");
+      }
+    } );
+  </script>
+</body>
+</html>
