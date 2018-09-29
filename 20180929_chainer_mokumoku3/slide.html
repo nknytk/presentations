@@ -1,0 +1,297 @@
+<!DOCTYPE hmlt>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Object Detection For IoT And Embedded Devices</title>
+  <link rel="stylesheet" href="reveal.js/css/reveal.css">
+  <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+  <style type="text/css">
+    .reveal h1,
+    .reveal h2,
+    .reveal h3,
+    .reveal h4,
+    .reveal h5,
+    .reveal h6 {
+      text-transform: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="reveal"><div class="slides">
+
+    <section id="title">
+      <h1>Object Detection For<br/>IoT And Embedded Devices</h1>
+    </section>
+
+    <section id="summary">
+      <h2>ざっくり言うと</h2>
+      <div>
+        ラズパイのCPUでも準リアルタイムでObject Detectionを行えるCNN物体検出器を作ろうと試行錯誤してる話
+      </div>
+    </section>
+
+    <section id="demo-setting">
+      <h2>デモ</h2>
+      <div>
+        <ol>
+          <li>ノートPCで著作権フリーの動画を再生</li>
+          <li>PCの画面をUSB Webカメラで撮影</li>
+          <li>ラズパイで物体検出</li>
+          <li>ラズパイに繋いだディスプレイに結果描画</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="demo-image">
+      <div>
+        <img src="resource/demosystem.jpg"/>
+      </div>
+    </section>
+
+    <section id="demo1">
+      <h2>顔の検出: 6.5FPS</h2>
+      <video src="resource/demo1.mp4" controls/>
+    </section>
+
+    <section id="demo2">
+      <h2>3物体検出(高FPS版): 4.3FPS</h2>
+      <div>
+        <span style="color:red">赤=乗り物</span>,
+        <span style="color:green">緑=動物</span>,
+        <span style="color:blue">青=人</span>
+      </div>
+      <video src="resource/demo2.mp4" controls/>
+    </section>
+
+    <section id="status">
+      <h2>現状</h2>
+      <ul>
+        <li>それなりに動いている</li>
+        <li>ちょっと精度悪いよね。。</li>
+        <li>言い訳: 原因の一部は安物Webカメラ
+          <ul>
+            <li>動体を撮すと残像がひどい</li>
+            <li>場面によっては白飛び・黒つぶれ</li>
+            <li>ピントが合わずボケている</li>
+          </ul>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>どうやって作ったのか説明</h2>
+      <h2 class="fragment">の前に</h2>
+      <h1 class="fragment">ラズパイって何?</h1>
+    </section>
+
+    <section id="raspberry-pi">
+      <h2>Raspberry Pi 3 Model B</h2>
+      <div>
+        <ul>
+          <li>Linuxが動くシングルボードコンピュータ</li>
+          <li>CPU ARMv8 4Core, Memory 1GB</li>
+        </ul>
+      </div>
+      <img src="resource/rp.png" width="60%"/>
+    </section>
+
+    <section id="rp-cpu">
+      <h2>ラズパイのCPU性能</h2>
+      <div>
+        <img src="resource/cnn-inference-speed.png"/>
+      </div>
+    </section>
+
+    <section>
+      <h2>こんなCPUで大丈夫か?</h2>
+      <div class="fragment">
+        <h3>大丈夫なわけない</h3>
+        <h3>とにかく軽量化しないと...</h3>
+      </div>
+    </section>
+
+    <section id="model-selection">
+      <h2>軽量化のためのモデル選択</h2>
+      <div>
+        YOLOをベースに作ることにした
+        <ul>
+          <li>RCNN系
+            <ul>
+              <li>重すぎて無理</li>
+            </ul>
+          </li>
+          <li>SSD
+            <ul>
+              <li>パラメータを削ったら成立しなくなりそう</li>
+              <li>複雑で実装できる自信がなかった</li>
+            </ul>
+          </li>
+          <li>YOLO
+            <ul>
+              <li>パラメータを削っても成立しそう</li>
+              <li>実装できそうと思った(v1なら)</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="yolo">
+      <h2>YOLO</h2>
+      <img src="resource/yolo.png">
+    </section>
+
+    <section id="mobile-yolo">
+      <h2>今回作ったやつ</h2>
+      <img src="resource/mobile-yolo.png">
+    </section>
+
+    <section id="cnn">
+      <h2>今回作ったやつのCNN部</h2>
+      <ul>
+        <li>MobileNet + leaky_relu</li>
+        <li>フィルタ数をn/32に変更</li>
+        <li>chainerで実装</li>
+      <ul>
+    </section>
+
+    <section id="compare-size">
+      <h2>サイズ比較</h2>
+      <table style="color:white">
+        <tr><th>モデル</th><th>npzサイズ</th><th>パラメータ数</th></tr>
+        <tr><td>YOLO v3</td><td>218MB</td><td>61626049</td></tr>
+        <tr><td>ResNet-50</td><td>91MB</td><td>25557096</td></tr>
+        <tr><td>MobileNet(n=32)</td><td>7.2MB</td><td>3182352</td></tr>
+        <tr style="color:red"><td>今回の3物体検出(n=6)</td><td>366KB</td><td>87316</td></tr>
+        <tr style="color:red"><td>今回の顔検出(n=3)</td><td>132KB</td><td>25092</td><tr>
+      </table>
+    </section>
+
+    <section id="data">
+      <h2>学習データ</h2>
+      <ul>
+        <li>Pascal VOC 2007trainval + 2012trainval</li>
+        <li>顔検出: "head"を含む全画像 + 含まない画像中2%</li>
+        <li>3物体検出: 全画像を使い、オブジェクトをグループ化<br/>
+          例: catもdogもhorseも全て"animal"として1ラベルに
+        </li>
+        <li>データ拡張: 左右反転、ランダムクロップ</li>
+      </ul>
+    </section>
+
+   <section id="classification-difficulty">
+     <h2>セルの分類を難しくする要素</h2>
+     <ol>
+       <li>オブジェクトのないセルが大多数<br/>
+         =&gt;誤差計算時、オブジェクトなしの重みを下げる
+       </li>
+       <li>オブジェクト中心がセル境目だと分類困難</li>
+     </ol>
+     <br/>
+     <img src="resource/label_difficulty.png">
+   </section>
+
+   <section id="">
+     <h2>セル境目問題への対処</h2>
+     <div>
+       難しい分類は誤差の重みを下げる
+       =&gt;難しい問題を無理に学習しようとして全体の性能が落ちるのを防止
+     </div>
+     <img src="resource/position_weight.png">
+   </section>
+
+   <section>
+     <h2>採用を見送ったネットワーク構造</h2>
+     <ul>
+       <li>
+         <h3>Residual Connection</h3>
+         <ul>
+           <li>計算グラフ分岐はキャッシュの小さいCPUに不向き</li>
+           <li>精度はほぼ変わらなかった</li>
+           <li>(分類問題だけならMobileNetにResidual Connection追加は精度上がった)</li>
+         </ul>
+       </li>
+       <li>
+         <h3>ShuffleNet/MobileNetV2</h3>
+         <ul>
+           <li>精度も速度も落ちた</li>
+           <li>実装が間違っている可能性あり</li>
+         </ul>
+       </li>
+     </ul>
+   </section>
+
+   <section>
+     <h2>採用を見送った学習手法</h2>
+     <ul>
+       <li>
+         <h3>転移学習</h3>
+         <ul>
+           <li>Tiny ImageNetの一部クラスの分類を事前学習</li>
+           <li>精度が落ちた</li>
+         </ul>
+       </li>
+       <li>
+         <h3>Focal Loss</h3>
+         <ul>
+           <li>分類の難しい問題への誤差を大きくする誤差関数</li>
+           <li>途中で発散。実装間違い? モデルの表現力不足?</li>
+         </ul>
+       </li>
+       <li>
+         <h3>Overwrapping Grid</h3>
+         <ul>
+           <li>Lossが下がらない</li>
+           <li>重複部に全然違う予測が出た時どうするか</li>
+         </ul>
+       </li>
+     </ul>
+   </section>
+
+    <section id="">
+      <h2>デモのシステム構成(高FPS版)</h2>
+      <img src="resource/system-architecture.png">
+      <ul>
+        <li>worker processで分散処理し、CPUを使い切る</li>
+        <li>検出結果をバッファし、撮影時刻でソートして描画</li>
+      </ul>
+    </section>
+
+    <section id="">
+      <h2>デモのシステム構成(低遅延版)</h2>
+      <img src="resource/system-architecture2.png">
+      <ul>
+        <li>専用プロセスで確実に最新フレームを取得/描画</li>
+        <li>検出完了が遅れたフレームは描画せず捨てる</li>
+        <li>遅延は減る(1.6=&gt;0.9)がFPSも落ちる(4.3=&gt;3.4)</li>
+      </ul>
+    </section>
+
+
+    <section id="help me">
+      <h2>困っていること</h2>
+      <ul>
+        <h3><li>精度が! 上がらない!!</li></h3>
+        <h3><li>アイデア尽きた</li></h3>
+        <h3><li>SSDにも挑戦したいが理解・実装困難</li></h3>
+      </ul>
+    </section>
+
+    <section>
+      <h2>ご清聴ありがとうございました</h2>
+      <div>ソースコードは<a href="https://gitlab.com/nknytk/object-detection/tree/dev">こちら</a></div>
+    </section>
+
+  </div></div>
+  <script src="reveal.js/js/reveal.js"></script>
+  <script>
+    Reveal.initialize();
+    Reveal.addEventListener( 'fragmentshown', function( event ) {
+      if (event.fragment.id == "trigger1") {
+        document.getElementById("to_be_deleted").setAttribute("style", "text-decoration: line-through");
+      }
+    } );
+  </script>
+</body>
+</html>
