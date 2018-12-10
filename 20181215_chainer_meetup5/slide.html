@@ -1,0 +1,270 @@
+<!DOCTYPE hmlt>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MultiprocessIterator</title>
+  <link rel="stylesheet" href="reveal.js/css/reveal.css">
+  <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+  <style type="text/css">
+    .reveal h1,
+    .reveal h2,
+    .reveal h3,
+    .reveal h4,
+    .reveal h5,
+    .reveal h6 {
+      text-transform: none;
+    }
+  </style>
+  <script src="webdnn.js/webdnn.js"></script>
+  <script src="webdnn.js/webcam.js"></script>
+  <script src="custom/detection.js"></script>
+
+</head>
+
+<body>
+  <div class="reveal"><div class="slides">
+
+    <section id="title">
+      <h1>MultiprocessIteratorで<br/>爆速学習しよう</h1>
+    </section>
+
+    <section id="self-introduction">
+      <h2>自己紹介</h2>
+      <ul>
+        <li>
+          <h3>仕事</h3>
+          <ul>
+            <li>ECサイト、ニュース、ポータルなどの全文検索</li>
+	    <li>画像や文章からの自動タグ付けにchainerを使用<br/>&nbsp;</li>
+          </ul>
+        </li>
+        <li>
+          <h3>趣味</h3>
+          <ul>
+            <li>Raspberry Piでなんか作る</li>
+            <li>Raspberry Piでの画像処理にchainerを使用</li>
+          </ul>
+        </li>
+      </ul>
+    </section>
+
+    <section id="demo1">
+      <h2>Chainer使用例1: 図書館司書</h2>
+      <iframe width="784" height="441" src="https://www.youtube.com/embed/vwUpuG7dlB4?end=32" frameborder="0" allowfullscreen></iframe>
+    </section>
+
+    <section>
+      <h2>図書館司書の中身</h2>
+      <div>OSSを駆使して全部Raspberry Pi上で処理</div>
+      <img src="../20170410_iot_librarian_IoTLT_Vol26/res/architecture.jpg">
+    </section>
+
+    <section id="demo2">
+      <h2>Chainer使用例2: 物体検出</h2>
+      <div>
+        <span style="color:red">赤=乗り物</span>,
+        <span style="color:green">緑=動物</span>,
+        <span style="color:blue">青=人</span>
+      </div>
+      <video src="../20180929_chainer_mokumoku3/resource/demo2.mp4" controls/>
+    </section>
+
+    <section>
+      <h2>物体検出の動作環境</h2>
+      <div>撮影・検出・描画は全てRaspberry Pi</div>
+      <div>
+        <img src="../20180929_chainer_mokumoku3/resource/demosystem.jpg"/>
+      </div>
+    </section>
+
+    <section id="demo3">
+      <h2>例3: WebDNNのモデル作成</h2>
+      <div>
+        <span style="color:red">赤=乗り物</span>,
+        <span style="color:green">緑=動物</span>,
+        <span style="color:blue">青=人</span>
+      </div>
+      <button onclick="toggleDetection()" id="runButton">Start / Stop</button>
+      <div style="display:none">
+        <video id="input"></video>
+      </div>
+      <div style="margin: 10px;">
+        <canvas id="output" style="width:640px; height:480px;"></canvas>
+      </div>
+    </section>
+
+    <section id="problem">
+      <ul>
+        <li>極小リソースでCNNを動かしたい</li>
+        <li>モデル自体を小さく軽く作る</li>
+	<li>軽量モデルの学習時に起きること。それは</li>
+      </ul>
+      <h2 class="fragment">前処理がボトルネックになる問題</h2>
+    </section>
+
+    <section id="preprocess">
+      <h2>前処理?</h2>
+      教師データとして画像を扱う際、わざとノイズを加えてモデルの汎化性能向上を狙うの、よくやりますよね
+    </section>
+
+    <section id="flip">
+      <h3>左右反転</h3>
+      <div>
+        <img src="./images/chainer_logo.jpg">
+        <img src="./images/flipped.jpg">
+      </div>
+    </section>
+
+    <section id="crop">
+      <h3>ランダム切り抜き</h3>
+      <div>
+        <img width="200" src="./images/chainer_logo.jpg">
+        <img width="200" src="./images/cropped_0.jpg">
+        <img width="200" src="./images/cropped_1.jpg">
+        <img width="200" src="./images/cropped_2.jpg">
+      </div>
+      <div>
+        <img width="200" src="./images/cropped_3.jpg">
+        <img width="200" src="./images/cropped_4.jpg">
+        <img width="200" src="./images/cropped_5.jpg">
+        <img width="200" src="./images/cropped_6.jpg">
+      </div>
+    </section>
+
+    <section id="rotation">
+      <h3>ランダム回転</h3>
+      <div>
+        <img width="200" src="./images/chainer_logo.jpg">
+        <img width="200" src="./images/rotation_0.jpg">
+        <img width="200" src="./images/rotation_1.jpg">
+        <img width="200" src="./images/rotation_2.jpg">
+      </div>
+      <div>
+        <img width="200" src="./images/rotation_3.jpg">
+        <img width="200" src="./images/rotation_4.jpg">
+        <img width="200" src="./images/rotation_5.jpg">
+        <img width="200" src="./images/rotation_6.jpg">
+      </div>
+    </section>
+
+    <section id="rough">
+      <h3>ざらざらノイズ</h3>
+      <div>
+        <img width="200" src="./images/chainer_logo.jpg">
+        <img width="200" src="./images/rough_0.jpg">
+        <img width="200" src="./images/rough_1.jpg">
+        <img width="200" src="./images/rough_2.jpg">
+      </div>
+      <div>
+        <img width="200" src="./images/rough_3.jpg">
+        <img width="200" src="./images/rough_4.jpg">
+        <img width="200" src="./images/rough_5.jpg">
+        <img width="200" src="./images/rough_6.jpg">
+      </div>
+    </section>
+
+    <section id="tone">
+      <h3>色のバランス変更</h3>
+      <div>
+        <img width="200" src="./images/chainer_logo.jpg">
+        <img width="200" src="./images/tone_0.jpg">
+        <img width="200" src="./images/tone_1.jpg">
+        <img width="200" src="./images/tone_2.jpg">
+      </div>
+      <div>
+        <img width="200" src="./images/tone_3.jpg">
+        <img width="200" src="./images/tone_4.jpg">
+        <img width="200" src="./images/tone_5.jpg">
+        <img width="200" src="./images/tone_6.jpg">
+      </div>
+    </section>
+
+    <section id="all">
+      <h3>...全部!!</h3>
+      <div>
+        <img width="200" src="./images/chainer_logo.jpg">
+        <img width="200" src="./images/all_0.jpg">
+        <img width="200" src="./images/all_1.jpg">
+        <img width="200" src="./images/all_2.jpg">
+      </div>
+      <div>
+        <img width="200" src="./images/all_3.jpg">
+        <img width="200" src="./images/all_4.jpg">
+        <img width="200" src="./images/all_5.jpg">
+        <img width="200" src="./images/all_6.jpg">
+      </div>
+    </section>
+
+    <section>
+      <h2>前処理ボトルネック</h2>
+      <ol>
+        <li>様々な前処理を重ねるとそれなりに時間を消費</li>
+	<li>用意できる教師データが少なくなる</li>
+	<li>GPUは大量に学習できる計算力がある</li>
+	<li>GPUとCPUのほとんどのcoreを余らせる状態に</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>前処理ボトルネック</h2>
+      <div>Pascal VOC学習中のGPU</div>
+      <img src="./images/voc_1p_gpu.png">
+      <div>Urban Object Detection学習中のGPU</div>
+      <img src="./images/urban_1p_gpu.png">
+    </section>
+
+    <section>
+      <h3>この問題を解決するのが</h3>
+      <h1>MultiprocessIterator</h1>
+    </section>
+
+    <section>
+      <h2>MultiprocessIterator</h2>
+      <ul>
+        <li>ChainerのMNISTチュートリアルに登場するSerialIteratorと差し替えて使える</li>
+        <li>n_jobsで指定した数だけworkerプロセスを起動し、並列でデータを準備してくれる</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>効果: GPU使用率up</h2>
+      <div>Pascal VOC学習中(n_jobs=5)</div>
+      <img src="./images/voc_5p_gpu.png">
+      <div>Urban Object Detection学習中(n_jobs=8)</div>
+      <img src="./images/urban_10p_gpu.png">
+    </section>
+
+    <section>
+      <h2>効果: 学習速度up</h2>
+      <img src="./images/training_speed.png">
+    </section>
+
+
+    <section>
+      <h2>注意点</h2>
+      <div>当然CPUのCore数が要求されます</div>
+      <img src="./images/cpu.jpg">
+    </section>
+
+    <section>
+      <h2>注意点</h2>
+      <div>データを逐次ディスクから読み出す場合、<br/>ディスクの読み出し速度も要求されます</div>
+      <img src="./images/disk.jpg">
+    </section>
+
+    <section>
+      <h2>ご清聴ありがとうございました</h2>
+    </section>
+
+  </div></div>
+  <script src="reveal.js/js/reveal.js"></script>
+  <script>
+    Reveal.initialize();
+    Reveal.addEventListener( 'fragmentshown', function( event ) {
+      if (event.fragment.id == "trigger1") {
+        document.getElementById("to_be_deleted").setAttribute("style", "text-decoration: line-through");
+      }
+    } );
+  </script>
+</body>
+</html>
