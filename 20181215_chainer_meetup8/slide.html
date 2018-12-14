@@ -25,7 +25,7 @@
   <div class="reveal"><div class="slides">
 
     <section id="title">
-      <h1>MultiprocessIteratorで<br/>爆速学習しよう</h1>
+      <h1>MultiprocessIterator<br/>が有能な件</h1>
     </section>
 
     <section id="self-introduction">
@@ -35,7 +35,8 @@
           <h3>仕事</h3>
           <ul>
             <li>ECサイト、ニュース、ポータルなどの全文検索</li>
-	    <li>画像や文章からの自動タグ付けにchainerを使用<br/>&nbsp;</li>
+	    <li>画像や文章からの自動タグ付けにchainerを使用<br/></li>
+	    <li><a target="blank" href="https://qiita.com/advent-calendar/2018/supership">Supership Advent Calendar</a>の17日目に書きます<br/>&nbsp;</li>
           </ul>
         </li>
         <li>
@@ -59,26 +60,8 @@
       <img src="../20170410_iot_librarian_IoTLT_Vol26/res/architecture.jpg">
     </section>
 
-    <section id="demo2">
-      <h2>Chainer使用例2: 物体検出</h2>
-      <div>
-        <span style="color:red">赤=乗り物</span>,
-        <span style="color:green">緑=動物</span>,
-        <span style="color:blue">青=人</span>
-      </div>
-      <video src="../20180929_chainer_mokumoku3/resource/demo2.mp4" controls/>
-    </section>
-
-    <section>
-      <h2>物体検出の動作環境</h2>
-      <div>撮影・検出・描画は全てRaspberry Pi</div>
-      <div>
-        <img src="../20180929_chainer_mokumoku3/resource/demosystem.jpg"/>
-      </div>
-    </section>
-
     <section id="demo3">
-      <h2>例3: WebDNNのモデル作成</h2>
+      <h2>例2: WebDNNで物体検出</h2>
       <div>
         <span style="color:red">赤=乗り物</span>,
         <span style="color:green">緑=動物</span>,
@@ -180,7 +163,7 @@
     </section>
 
     <section id="all">
-      <h3>...全部!!</h3>
+      <h3>重ねがけ</h3>
       <div>
         <img width="200" src="./images/chainer_logo.jpg">
         <img width="200" src="./images/all_0.jpg">
@@ -198,10 +181,8 @@
     <section>
       <h2>前処理ボトルネック</h2>
       <ol>
-        <li>様々な前処理を重ねるとそれなりに時間を消費</li>
-	<li>用意できる教師データが少なくなる</li>
-	<li>GPUは大量に学習できる計算力がある</li>
-	<li>GPUとCPUのほとんどのcoreを余らせる状態に</li>
+        <li>前処理を重ねるとCPU処理に時間がかる</li>
+	<li>GPUはスカスカなのに学習が進まない状態に</li>
       </ol>
     </section>
 
