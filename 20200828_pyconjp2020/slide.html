@@ -1,0 +1,326 @@
+<html>
+<head>
+  <link rel="stylesheet" href="reveal.js-4.0.2/dist/reveal.css">
+  <link rel="stylesheet" href="reveal.js-4.0.2/dist/theme/black.css">
+  <script src="reveal.js-4.0.2/dist/reveal.js"></script>
+  <style type="text/css">
+  .reveal h1,
+  .reveal h2,
+  .reveal h3,
+  .reveal h4,
+  .reveal h5,
+  .reveal h6 {
+    text-transform: none;
+  }
+  </style>
+</head>
+
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<section>
+  <h1>ラズパイ3BのCPUで<br/>リアルタイム<br/>物体検出</h1>
+  <div></div>
+  <div>@PyCon JP 2020</div>
+</section>
+
+<section data-background="img/intro.png">
+  <h3 class="fragment fade-out" style="background-color:rgba(0,0,0,0.5)"><br/>Raspberry Pi 3Bと私<br/>　</h3>
+</section>
+
+<section>
+  <h3>やりたかったこと</h3>
+  <div>
+    手持ちのRaspberry Pi 3Bでリアルタイムな<br/>
+    bounding box detectionをしたい。<br/>
+    <a target="blank" href="https://pjreddie.com/darknet/yolo/">YOLO</a>みたいに。
+  </div>
+</section>
+
+<section>
+  <h3>ラズパイでの物体検出</h3>
+  <ul>
+    <li>軽量なMobileNet SSDが主流</li>
+    <li>YouTubeで「Raspberry Pi MobileNet SSD」と検索すると
+      <ul>
+        <li>ラズパイ本体ではコマ送りがやっと</li>
+	<li>リアルタイム処理する場合は<br/>Neural Compute Stickなどを追加するのが主流</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+
+<section data-background="img/demo-setup1.jpg">
+  <div class="fragment fade-out" style="background-color:rgba(0,0,0,0.3)">
+    <h3>今回やったこと</h3>
+    <ol>
+      <li>macで右側のディスプレイに動画を再生</li>
+      <li>右側のディスプレイをラズパイのカメラで撮影</li>
+      <li>ラズパイだけで物体検出</li>
+      <li>検出結果を左側のディスプレイに表示</li>
+    </ol>
+  </div>
+</section>
+<section data-background="img/demo-setup2.jpg">
+</section>
+
+<section data-background-video="img/demo.mp4">
+  <div class="fragment fade-out" style="background-color:rgba(0,0,0,0.3)">
+    <h3>やったこと</h3>
+    <div>
+      <span style="color:red">赤=乗り物</span>
+      <span style="color:green">緑=動物</span>
+      <span style="color:blue">青=人</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>これをどう作ってきたか<br/>1. 検出器の作成</br>2. 実行環境整備</br>の2つの観点から紹介します</h3>
+</section>
+
+<section>
+  <h1>検出器の作成</h1>
+</section>
+
+<section>
+  <h3>考え方</h3>
+  <ul>
+    <li>CNNを使った物体検出器を思いっきり軽量化しよう</li>
+    <li>軽量化のために色々妥協しよう
+      <ul>
+        <li>人、動物、乗り物の3種類だけ検出できれば良し</li>
+	<li>精度は実用下限ギリギリで良し</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h3>CNNを使った物体検出器</h3>
+  <ul>
+    <li>2-stage detector
+    </li>
+    <li>1-stage detector
+      <ul>
+        <li>YOLO</li>
+        <li>SSD</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h3>2-stage detector</h3>
+  <ul>
+    <li>何かある箇所を特定=&gt; 何があるかを分類</li>
+    <li>R-CNN, Faster R-CNNなど</li>
+    <li>精度は高く、処理には時間がかかる傾向</li>
+  </ul>
+  <br/>
+  <img src="img/2stage.png">
+</section>
+
+<section>
+  <h3>YOLO: You Only Look Once</h3>
+  <ul>
+    <li>物体位置の特定と分類を同時に行う</li>
+    <li>処理時間は短く、小さい物体の検出が苦手な傾向</li>
+  </ul>
+  <br/>
+  <img src="img/yolo.png" height="500px"/>
+</section>
+
+<section>
+  <h3>SSD: Single Shot MultiBox Detector</h3>
+  <ul>
+    <li>小さい物体は手前の解像度が高い層で、<br/>大きい物体は奥の解像度が低い層で検出</li>
+    <li>最近の検出器はSSDの発展型が多いように思われる</li>
+  </ul><br/>
+  <img src="img/ssd.png"/>
+  <small>図は <a target="blank" href="https://arxiv.org/abs/1512.02325">Wei Liuら,(2016) SSD: Single Shot MultiBox Detector</a> より引用</small>
+</section>
+
+<section>
+  <h3>今回作ったもの</h3>
+  <div>YOLOを更に簡素化した実装</div>
+  <img src="img/model.png" height="500px"/>
+</section>
+
+<section>
+  <h3>軽量CNN</h3>
+
+  <div>
+    少ないパラメータで構成された簡素なCNN
+    <table class="table" style="color:white;font-size:42px;">
+      <thead>
+      </thead>
+      <tbody>
+        <tr><th>モデル</th><th>パラメータ数</th></tr>
+        <tr><td>YOLO v3</td><td>6163万</td></tr>
+        <tr><td>ResNet-50</td><td>2556万</td></tr>
+        <tr><td>MobileNetV1</td><td>318万</td></tr>
+        <tr style="color:red"><td>今回の3物体検出</td><td>33万</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h3>学習の工夫1: 無理はさせない</h3>
+  <div>難しい問題を無理に学習しようとして<br/>全体の性能が落ちるのを防ぐ</div>
+  <img src="img/position_weight.png" height="500px"/>
+</section>
+
+<section>
+  <h3>学習の工夫2: 適応的バッチサイズ</h3>
+  <ul>
+    <li>
+      学習中にミニバッチサイズ上げることで<br/>
+      学習速度が上がることが示されている<br/>
+      <small><a target="blank" href="https://arxiv.org/abs/1711.00489">Samuel L. Smithら, (2018) Don't Decay the Learning Rate, Increase the Batch Size</a></small></li>
+    <li>どのタイミングで上げたら良いのか?</li>
+    <li>validation lossの改善が5epoch停滞したら<br/>バッチサイズを4倍にするよう実装してみた<br/>=&gt;有効だったので採用</li>
+  </ul>
+</section>
+
+<section>
+  <h3>学習の工夫2: 適応的バッチサイズ</h3>
+  <img src="img/validation-loss-batchsize.png" height="550px"/>
+</section>
+
+<section>
+  <h3>学習の工夫3: 繰り返し転移学習</h3>
+  <ul>
+    <li>2種類のbounding box detection datasetを交互に学習させる
+      <ul>
+        <li>A. <a target="bank" href="http://host.robots.ox.ac.uk/pascal/VOC/">Pascal VOC</a></li>
+	<li>B. <a target="blank" href="http://www.rovit.ua.es/dataset/traffic/">Urban Object Detection Dataset</a></li>
+      </ul>
+    </li>
+    <li>
+      Aの検出器を作りたい場合は A =&gt; B =&gt; A<br/>
+      Bの検出器を作りたい場合は B =&gt; A =&gt; B<br/>
+      と学習させると(ほんの少しだけ)性能が良くなる
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h3>学習の工夫3: 繰り返し転移学習</h3>
+  <img src="img/validation-loss-transfer-learning.png"/>
+</section>
+
+<section>
+  <h1>実行環境整備</h1>
+</section>
+
+<section>
+  <h3>ハードウェアの準備</h3>
+  <ul>
+    <li>Raspberry Pi 3B(3B+, 4Bでも可)</li>
+    <li>十分な容量のUSB電源</li>
+    <li>十分な容量のヒートシンク</li>
+    <li>ディスプレイの解像度を1280x720に<br/>(FullHDは描画負荷が高くFPS低下に繋がる)</li>
+    <li>可能であればRaspberry Pi Camera<br/>(USB Webcamでも動作はするがFPSが低下する)</li>
+  </ul>
+</section>
+
+<section>
+  <h3>初期構成</h3>
+  <div>Python3.7で実装。4.4FPS, 遅延1.5秒</div>
+  <img src="img/arch1.png" height="550px"/>
+</section>
+
+<section>
+  <h3><a target="blank" href="https://onnx.ai/">ONNX</a></h3>
+  <div>機械学習モデルを様々なフレームワーク間で<br/>交換するための標準フォーマット</div>
+  <img src="img/onnx-exchange.png" height="500px"/>
+</section>
+
+<section>
+  <h3><a target="blank" href="https://microsoft.github.io/onnxruntime/">ONNX Runtime</a></h3>
+  <ul>
+    <li>ONNXで保存されたモデルを使い高速な推論を行うライブラリ</li>
+    <li>x86_64, arm64なら pip install onnxruntime</li>
+    <li>arm32の場合は自分でコンパイル</li>
+    <li>ラズパイ用のビルド済みwhlを<a target="blank" href="https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux">githubで公開中</a></li>
+  </ul>
+</section>
+
+<section>
+  <h3>Python3.8</h3>
+  <ul>
+    <li>後述のSharedMemoryを目的に導入</li>
+    <li><strike>3.7から3.8にしただけで速度が向上</strike><br/>計測ミスでしたごめんなさい</li>
+  </ul>
+</section>
+
+<section>
+  <h3>プロセス間のデータ受け渡し</h3>
+  <div>
+    <ul>
+      <li>よく使うのはmultiprocessing.Queue</li>
+      <li>簡単、柔軟、便利</li>
+      <li>pickleを介すため速度は微妙</li>
+    </ul>
+  </div>
+  <img src="img/data-pipeline-queue.gif" style="height:450px">
+</section>
+
+<section>
+  <h3>SharedMemory</h3>
+  <ul>
+    <li>Python3.8からmultiprocessngモジュールに追加</li>
+    <li>複数プロセスから読み書きできる共有メモリ</li>
+    <li>pickleを介さない</li>
+    <li>制約は多く、使いどころは限られる
+      <ul>
+        <li>読み書きできるのは"byte-like-object"だけ</li>
+        <li>初期化時に最大サイズ指定が必須</li>
+        <li>明示的に開放しないとメモリリークする</li>
+      </ul>
+    </li>
+    <li>今回の用途では使える<br/>(送るデータが固定サイズのnumpy配列だから)
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h3>SharedMemoryによるデータ受け渡し</h3>
+  <div>データ本体はSharedMemoryで渡し、<br/>読み書きのタイミングをQueueで通知・制御</div>
+  <img src="img/data-pipeline-shared-mem.gif" style="height:450px">
+</section>
+
+<section>
+  <h3>データ受け渡しにかかる時間</h3>
+  <div>
+    入力はSharedMemory、出力はQueueが良い<br/>
+    <small>計測に使用したコードと結果の詳細は<a target="blank" href="https://gist.github.com/nknytk/16643fda5ed18087ad083c2b5cd0674d">Gistに掲載</a></small>
+  </div>
+  <img src="img/memory-bench.png" height="500px"/>
+</section>
+
+<section>
+  <h3><a target="blank" href="https://github.com/nknytk/LightOD">最終構成</a></h3>
+  <div>Python3.8で実装。11.0FPS、遅延0.4秒</div>
+  <img src="img/arch2.png" height="550px"/>
+</section>
+
+<section>
+  <h1>Q&amp;A</h1>
+</section>
+
+<section>
+  <h1>差し支えなければ<br/><a target="blank" href="https://forms.gle/eyuxUqdmHxRhwEwH9">アンケート</a>に<br/>ご協力お願いします</h1>
+</section>
+
+</div>
+</div>
+<script>
+Reveal.initialize({width: '80%'});
+</script>
+</body>
+</html>
