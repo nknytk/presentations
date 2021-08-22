@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="user-scalable=no" />
+<link crossorigin="anonymous"
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+  integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
+<script crossorigin="anonymous"
+  src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+  integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
+<link crossorigin="anonymous"
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+  integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="/>
+<script crossorigin="anonymous"
+  src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+  integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="></script>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script src="./viewer.js"></script>
+<link rel="stylesheet" href="./viewer.css"></script>
+<title>地図で見る国勢調査</title>
+</head>
+
+<body>
+
+<!-- header navbar -->
+<nav class="navbar navbar-expand-md navbar-dark bg-dark header-area">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">地図で見る国勢調査</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="key-metrics-selector" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            着目する項目:人口
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="key-metrics-selector">
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('population')">人口</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('density')">人口密度</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('population_growth_rate')">人口増加率</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('num_of_households')">世帯数</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('people_in_household')">世帯あたり人数</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('household_growth_rate')">世帯増加率</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('avg_age')">平均年齢</a></li>
+	    <li><a class="dropdown-item" href="javascript:switchMetricsKey('a65_ratio')">高齢者率</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('unemployment_rate')">完全失業率</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('day_night_population_ratio')">昼夜間人口比率</a></li>
+            <li><a class="dropdown-item" href="javascript:switchMetricsKey('area')">面積</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <div class="nav-item dropdown">
+      <a class="nav-link dropdown-toggle link-light" href="#" id="explanations" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        説明
+      </a>
+      <ul class="dropdown-menu" aria-labelledby="explanations">
+        <li><a class="dropdown-item" href="javascript:showExplanationModal('about-data')">データについて</a></li>
+        <li><a class="dropdown-item" target="blank" href="https://github.com/nknytk">制作者</a></li>
+      </ul>
+    </div>
+    <a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-show-count="false" data-size="large">Tweet</a>
+  </div>
+</nav>
+
+<!-- sidebar -->
+
+<!-- visualization content -->
+<div class="container-fluid">
+
+  <ul class="nav nav-tabs nav-fill header-area" role="tablist">
+    <li class="nav-item" role="presentation">
+      <a class="nav-link active" data-bs-toggle="tab" role="tab" href="#map-panel">地図</a>
+    </li>
+    <li class="nav-item" role="presentation">
+      <a class="nav-link" data-bs-toggle="tab" role="tab" href="#table-panel">一覧表</a>
+    </li>
+  </ul>
+  <div id="vizcontainer" class="tab-content">
+    <div class="tab-pane fade show active" id="map-panel" role="tabpanel">
+      <div id="citySelectorMap" class="osmMap"></div>
+    </div>
+    <div class="tab-pane fade show" id="table-panel" role="tabpanel">
+      <div id="ranking"></div>
+    </div>
+  </div>
+</div>
+
+<!-- city detail modal -->
+<div id="city-detail-modal" class="modal">
+  <div id="city-detail-modal-dialog" class="modal-dialog modal-dialog-scrollable wp90">
+    <div id="city-detail-modal-content" class="modal-content">
+    </div>
+  </div>
+</div>
+
+<!-- explanation modals -->
+<div id="about-data" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">データについて</h5></div>
+      <div class="modal-body">
+        <p>このページに使われているデータは、<a target="blank" href="https://www.e-stat.go.jp/">e-Stat</a>より取得した<a target="blank" href="https://www.e-stat.go.jp/stat-search/files?page=1&toukei=00200521&tstat=000001080615">平成27年国勢調査</a>の結果を加工したものです。人口と世帯数の推移については<a target="blank" href="https://www.e-stat.go.jp/stat-search/files?page=1&toukei=00200521&tstat=000001039448">平成22年国勢調査</a>、<a target="blank" href="https://www.e-stat.go.jp/stat-search/files?page=1&toukei=00200521&tstat=000001007251">平成17年国勢調査</a>、<a target="blank" href="https://www.e-stat.go.jp/stat-search/files?page=1&toukei=00200521&tstat=000000030001">平成12年国勢調査</a>の結果も併用しています。使用しているデータの項目と加工内容については<a target="blank" href="https://github.com/nknytk/jp-census-visualizer">こちら</a>をご覧ください。</p>
+        <p>本ページは表示内容の正確さを保証しません。正確・詳細なデータについてはリンク先の元データをご覧ください。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,59 @@
+body {
+  font-size: 20px;
+  font-size: 1.25rem;
+}
+.dropdown-item {
+  font-size: 1.25rem
+}
+.navbar-brand {
+  font-size: 1.25rem
+}
+@media (max-width: 1200px) {
+  body {
+    font-size: 28px;
+    font-size: 1.75rem;
+  }
+  .dropdown-item {
+    font-size: 1.75rem
+  }
+  .navbar-brand {
+    font-size: 1.75rem
+  }
+}
+
+.osmMap {
+  width: 100%;
+}
+.v-pad {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+tr.scrollableTBody {
+  width: 100%;
+  display: inline-table;
+  table-layout: fixed;
+}
+tbody.scrollableTBody {
+  overflow-y: scroll;      
+  width: 100%;
+  position: absolute;
+}
+
+.clearfix::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+.legend {
+  padding: 0.5em;
+  font-size: 1.5em;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 0.3em;
+}
+.legend i {
+  width: 1.5em;
+  height: 1.5em;
+  float: left;
+  margin: 0 0.3em 0 0;
+  opacity: 0.8;
+}
