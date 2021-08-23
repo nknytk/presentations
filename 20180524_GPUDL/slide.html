@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>ラズパイで準リアルタイムオブジェクト検出</title>
-  <link rel="stylesheet" href="reveal.js/css/reveal.css">
-  <link rel="stylesheet" href="reveal.js/css/theme/black.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.9.2/css/reveal.min.css" integrity="sha512-FysYagxDDbyay/e411zwpl4jFtMuB0fQ3Nw89A87VJcEW0afHCAUIuEwVIp/OJ8JRDufhw9IgUIgrFBDt8hl0w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.9.2/css/theme/black.min.css" integrity="sha512-7mmfNJrNsIA+p1SBsf/3sFxzwYpeMZZLkhVosSs5lIIE0XpQSAUUtgM+k6aRgUx4iXXemQOv33ck1g8q/FvecQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style type="text/css">
     .reveal h1,
     .reveal h2,
@@ -158,7 +158,7 @@
         <li>元のフィルタ数は全て32の倍数<br/>=&gt; 全中間層のフィルタ数をn/32に変更して軽量化</li>
         <li>chainerで実装</li>
       <ul>
-     <table style="color:white">
+     <table style="color:white; font-size:2.0rem">
        <tr><th>n</th><th>モデルサイズ</th></tr>
        <tr><td>32(MobileNet Original)</td><td>7.2MB</td></tr>
        <tr><td>3(顔検出)</td><td>132KB</td><tr>
@@ -237,7 +237,7 @@
     </section>
 
   </div></div>
-  <script src="reveal.js/js/reveal.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.9.2/js/reveal.js" integrity="sha512-VMwkG0MdbDSSM3wUzu6Ny450qkGMXTuBJdN1ssTZPTNWBkXxSYuvhW/o6eu7YQ2H1X2X1thKs6xdt8+obhX4Gg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     Reveal.initialize();
     Reveal.addEventListener( 'fragmentshown', function( event ) {
