@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<header>
+   <meta charset="UTF-8">
+   <title>ORT-Web Demo</title>
+   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+  <style>
+.btn-secondary,
+.btn-secondary:hover,
+.btn-secondary:focus {
+  color: #333;
+}
+
+.form-center {
+  margin-left: auto;
+  margin-right: auto;
+  width: 640px
+}
+  </style>
+</header>
+
+<body class="d-flex h-100 text-center text-white bg-dark">
+
+<div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+
+  <header class="mb-auto">
+    <div>
+      <h3 class="float-md-start mb-0">ONNX Runtime Web Demo Page</h3>
+    </div>
+  </header>
+
+  <main class="px-3">
+    <h1>Face Detection Demo</h1>
+    <p class="lead">Webカメラの映像から顔の位置を検出し、顔の部分を指定した画像に置き換えて表示します。</p>
+
+    <div class="mb-3">
+      <label for="mask-image-url" class="form-label">顔の代わりに表示する画像のURLを指定してください</label>
+      <input type="text" class="form-control form-center" id="mask-image-url" placeholder="画像URLを指定してください"
+          value="https://1.bp.blogspot.com/-IWg3fVzZmv8/VixBcN7TOSI/AAAAAAAA0Bw/8I9RyLS2ld0/s800/lucha1_red.png"
+	  onchange="readMaskImage()">
+    </div>
+    <div id="control-container">
+      <button id="start-webcam" class="btn btn-lg btn-secondary fw-bold border-white bg-white" onclick="toggleStreaming()" value="aaa">Start Webcam</button>
+    </div>
+    <div id="input-container" hidden>
+      <video id="video-input"></video>
+    </div>
+    <div id="output-container">
+      <canvas id="work-canvas"/>
+    </div>
+  </main>
+
+  <footer class="mt-auto text-white-50">
+    <p>
+    顔検出モデルは<a target="blank" href="https://github.com/onnx/models">ONNX Model Zoo</a>より<a target="blank" href="https://github.com/onnx/models/tree/master/vision/body_analysis/ultraface">Ultra-lightweight face detection model</a>をお借りしました。
+    </p>
+  </footer>
+</div>
+
+<script>
+// global variables
+let inputVideo = null
+let workCanvas = null
+let workContext = null
+let ortSession = null
+let maskImage = null
+const inputArray1 = Array(640 * 480 * 3)
+const inputArray2 = Array(320 * 240 * 3)
+const confidenceThreshold = 0.7
+const supressionThreshold = 0.5
+const coverAreaMargin = 1.1
+
+async function initGlobalVars() {
+  inputVideo = document.getElementById('video-input')
+  workCanvas = document.getElementById('work-canvas')
+  workCanvas.width = 640
+  workCanvas.height = 480
+  workContext = workCanvas.getContext('2d')
+  //ortSession = await ort.InferenceSession.create('./models/version-RFB-640.onnx')
+  ortSession = await ort.InferenceSession.create('./models/version-RFB-320.onnx')
+  readMaskImage()
+}
+
+function toggleStreaming() {
+  if (inputVideo.paused) {
+    navigator.mediaDevices.getUserMedia({
+      video: {width: 640, height: 480, facingMode: 'user'},
+      audio: false
+    }).then(stream => {
+      inputVideo.srcObject = stream
+      inputVideo.play()
+      videoToCanvas()
+      document.getElementById('start-webcam').innerText = 'Stop Webcam'
+    })
+  } else {
+    inputVideo.pause()
+    document.getElementById('start-webcam').innerText = 'Start Webcam'
+    workContext.clearRect(0, 0, workCanvas.width, workCanvas.height)
+  }
+}
+
+async function videoToCanvas() {
+  if (inputVideo.paused) return
+
+  const procStart = new Date().getTime()
+  workContext.drawImage(inputVideo, 0, 0, workCanvas.width, workCanvas.height)
+  const imageData = workContext.getImageData(0, 0, workCanvas.width, workCanvas.height)
+  //const inputTensor = imageToTensor(imageData)
+  const inputTensor = imageToTensor(imageData, 2)
+  const results = await ortSession.run({input: inputTensor})
+  const faces = extractBox(results)
+  faces.forEach(replaceFace)
+  const procEnd = new Date().getTime()
+  //console.log(procEnd - procStart)
+  setTimeout(videoToCanvas, 7)
+}
+
+function imageToTensor(imageData, stride=1) {
+  // HWC rgba => NHCW rgb, normalized
+  if (stride == 1) {
+    const canvasSize = workCanvas.width * workCanvas.height
+    for (let i = 0; i < canvasSize; i++) {
+      inputArray1[i] = (imageData.data[i * 4] - 127) / 128
+      inputArray1[canvasSize + i] = (imageData.data[i * 4 + 1] - 127) / 128
+      inputArray1[canvasSize * 2 + i] = (imageData.data[i * 4 + 2] - 127) / 128
+    }
+    return new ort.Tensor('float32', Float32Array.from(inputArray1), [1, 3, 480, 640])
+  // HWC rgba => NHCW rgb, normalized, resized
+  } else if (stride > 1) {
+    const resizedWidth = workCanvas.width / stride
+    const resizedHeight = workCanvas.height / stride
+    const channelOffset = resizedWidth * resizedHeight
+    for (let h = 0; h < resizedHeight; h++) {
+      for (let w = 0; w < resizedWidth; w++) {
+        const convertedPixelOffset = h * resizedWidth + w
+        const originalPixelOffset = (h * workCanvas.width * stride + w * stride) * 4
+        inputArray2[convertedPixelOffset] = (imageData.data[originalPixelOffset] - 127) / 128
+        inputArray2[channelOffset + convertedPixelOffset] = (imageData.data[originalPixelOffset + 1] - 127) / 128
+        inputArray2[channelOffset * 2 + convertedPixelOffset] = (imageData.data[originalPixelOffset + 2] - 127) / 128
+      }
+    }
+    return new ort.Tensor('float32', Float32Array.from(inputArray2), [1, 3, 240, 320])
+  }
+}
+
+function extractBox(detectionResults) {
+  // filter out low confidence box
+  const detectedBoxes = []
+  const scores = []
+  for (i = 0; i < detectionResults.scores.dims[1]; i++) {
+    const score = detectionResults.scores.data[i * 2 + 1]
+    if (score > confidenceThreshold) {
+      scores.push(score)
+      detectedBoxes.push(detectionResults.boxes.data.slice(i * 4, i * 4 + 4))
+    }
+  }
+
+  // non maximum suppression
+  const pickedBoxes = []
+  const suppressedIndex = []
+  const sortedIndex = argsort(scores, false)
+  for (let i = 0; i < sortedIndex.length - 1; i++) {
+    if (suppressedIndex.includes(i)) continue
+    const targetBox = detectedBoxes[sortedIndex[i]]
+    pickedBoxes.push(targetBox)
+    for (let j = i + 1; j < sortedIndex.length; j++) {
+      if (iou(targetBox, detectedBoxes[sortedIndex[j]]) > supressionThreshold) {
+        suppressedIndex.push(j)
+      }
+    }
+  }
+
+  return pickedBoxes
+}
+
+function argsort(arr, ascending=true) {
+  const iIsLarger = ascending ? 1 : -1
+  const iIsLess = ascending ? -1 : 1
+  const indexArray = arr.map((val, idx) => idx)
+  indexArray.sort((i, j) => {
+    if (arr[i] > arr[j]) return iIsLarger
+    if (arr[j] > arr[i]) return iIsLess
+    return 0
+  })
+  return indexArray
+}
+
+function iou(box1, box2) {
+  const overrap_left = Math.max(box1[0], box2[0])
+  const overrap_right = Math.min(box1[2], box2[2])
+  if (overrap_right < overrap_left) return 0.0
+  const overrap_bottom = Math.max(box1[1], box2[1])
+  const overrap_top = Math.min(box1[3], box2[3])
+  if (overrap_top < overrap_bottom) return 0.0
+
+  const area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+  const area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+  const area_overrap = (overrap_top - overrap_bottom) * (overrap_right - overrap_left)
+  return area_overrap / (area1 + area2 - area_overrap)
+}
+
+function replaceFace(box) {
+  const maskAspect = maskImage.naturalWidth / maskImage.naturalHeight
+  const faceWidth = box[2] - box[0]
+  const faceHeight = box[3] - box[1]
+  const xCenter = (box[2] + box[0]) * 0.5 * workCanvas.width
+  const yCenter = (box[3] + box[1]) * 0.5 * workCanvas.height
+
+  let heightOffset = null
+  let widthOffset = null
+  // 検出された顔の領域がマスク画像より縦長の場合、
+  // 縦方向の領域のcoverAreaMargin倍をカバーしつつマスク画像の縦横比を保って画像を貼り付ける
+  if (faceWidth / faceHeight < maskAspect) {
+    heightOffset = (box[3] - box[1]) * 0.5 * coverAreaMargin * workCanvas.height
+    widthOffset = heightOffset * maskAspect
+  // 検出された顔の領域がマスク画像より横長の場合、
+  // 横方向の領域のcoverAreaMargin倍をカバーしつつマスク画像の縦横比を保って画像を貼り付ける
+  } else {
+    widthOffset = (box[2] - box[0]) * 0.5 * coverAreaMargin * workCanvas.width
+    heightOffset = widthOffset / maskAspect
+  }
+
+  const dx = Math.max(0, parseInt(Math.round(xCenter - widthOffset)))
+  const dy = Math.max(0, parseInt(Math.round(yCenter - heightOffset)))
+  const dw = parseInt(Math.round(widthOffset * 2))
+  const dh = parseInt(Math.round(heightOffset * 2))
+  workContext.drawImage(maskImage, dx, dy, dw, dh)
+}
+
+function readMaskImage() {
+  const img = new Image()
+  img.src = document.getElementById('mask-image-url').value
+  img.setAttribute('crossOrigin', '')
+  img.onload = () => maskImage = img
+}
+
+window.onload = function() {
+  initGlobalVars()
+}
+</script>
+</body>
+</html>
