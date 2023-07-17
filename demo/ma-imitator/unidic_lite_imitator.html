@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<header>
+   <meta charset="UTF-8">
+   <title>Unidic Lite Imitator Demo</title>
+   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+  <style>
+.btn-secondary {
+  color: #666;
+}
+.btn-secondary:hover, .btn-secondary:focus {
+  color: #222;
+}
+
+.form-center {
+  margin-left: auto;
+  margin-right: auto;
+  width: 826px;
+  height: 120px;
+}
+
+.result-container {
+  min-height: 480px;
+  width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+  </style>
+</header>
+
+<body class="d-flex h-100 text-center text-white bg-dark">
+
+<div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+
+
+  <main class="px-3">
+    <h1>Unidic Lite Imitator Demo</h1>
+    <p class="lead">辞書を使用せずにmecab + unidic_liteと概ね同じ単語分割と品詞推定(大分類まで)を実現します。</p>
+    <p class="lead">日本語文字列を入力して「Try」ボタンを押してください。</p>
+
+    <div class="mb-3">
+      <textarea maxlength="192" class="form-control form-center" id="input-text" placeholder="192文字以下の日本語文字列を入力してください">
+      </textarea>
+    </div>
+    <div id="control-container">
+      <button id="try" class="btn btn-lg btn-secondary fw-bold border-white bg-white" onclick="ma()" value="Try">Try</button>
+    </div>
+    <div id="output-container" class="result-container mb-3">
+    </div>
+  </main>
+
+  <footer class="mt-auto text-white-50">
+    <p>日本語版Wikipediaのデータを使用し、mecab + unidic_liteの出力を再現するよう学習させたモデルを使用しています。</p>
+    <p>詳細は<a target="blank" href="https://github.com/nknytk/ma-imitator">ma-imitator</a>を参照してください。</p>
+  </footer>
+</div>
+
+<script>
+let model = null
+let inputElem = null
+let outputElem = null
+
+class UnidicLiteImitator {
+  UNKNOWN_KANJI_ID = 1
+  UNKNOWN_NOKANJI_ID = 2
+  OUTPUT_NAME = '408'
+  constructor() {}
+
+  static async create() {
+    const instance = new UnidicLiteImitator()
+    instance.ortSession = await ort.InferenceSession.create('./unidic_lite_imitator.onnx')
+    const configContent = await fetch('config.json')
+    instance.config = await configContent.json()
+    instance.charIds = {}
+    for (let i = 0; i < instance.config.chars.length; i++) {
+      instance.charIds[instance.config.chars[i]] = i + 3
+    }
+    instance.pos = ['[PAD]', '前文字と同じ単語内'].concat(instance.config.parts_of_speech)
+    return instance
+  }
+
+  async parse(text) {
+    text = text.trim()
+    const modelInput = this.encode(text)
+    const rawOutput = await this.ortSession.run(modelInput)
+    return this.decode(text, rawOutput[this.OUTPUT_NAME].data)
+  }
+
+  encode(text) {
+    const charIds = []
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i]
+      if (this.charIds[c]) {
+        charIds.push(BigInt(this.charIds[c]))
+        continue
+      }
+      const charCode = c.charCodeAt(0)
+      if (((13312 <= charCode) && (charCode <= 19903)) || ((19968 <= charCode) && (charCode <= 40959))) {
+        charIds.push(BigInt(1))
+      } else {
+        charIds.push(BigInt(2))
+      }
+    }
+
+    const inputLength = charIds.length
+    const paddingLength = this.config.max_position_embeddings - inputLength
+    const attentionMask = []
+    const tokenTypeIds = []
+    for (let i = 0; i < inputLength; i++) {
+      attentionMask.push(BigInt(1))
+      tokenTypeIds.push(BigInt(0))
+    }
+    for (let i = 0; i < paddingLength; i++) {
+      charIds.push(BigInt(0))
+      attentionMask.push(BigInt(0))
+      tokenTypeIds.push(BigInt(0))
+    }
+    
+    return {
+      'input.1': new ort.Tensor('int64', BigInt64Array.from(charIds), [1, this.config.max_position_embeddings]),
+      'onnx::Unsqueeze_1': new ort.Tensor('int64', BigInt64Array.from(attentionMask), [1, this.config.max_position_embeddings]),
+      'input.3': new ort.Tensor('int64', BigInt64Array.from(tokenTypeIds), [1, this.config.max_position_embeddings])
+    }
+  }
+
+  decode(text, posIds) {
+    const tokens = []
+    let word = ''
+    let pos = ''
+    for (let i = 0; i < text.length; i++) {
+      let c = text[i]
+      let posId = posIds[i]
+      if (posId == 0) {
+        if (word.length > 0) {
+          tokens.push([word, pos])
+          word = ''
+          pos = ''
+        }
+      } else if (posId == 1) {
+        word += c
+      } else {
+        if (word.length > 0) tokens.push([word, pos])
+        word = c
+        pos = this.pos[posId]
+      }
+    }
+    if (pos != '') tokens.push([word, pos])
+    return tokens
+  }
+}
+
+async function ma() {
+  const r = await model.parse(inputElem.value)
+
+  const prevTable = document.getElementById('output-table')
+  if (prevTable) prevTable.remove()
+
+  const outputTable = document.createElement('table')
+  outputTable.id = 'output-table'
+  outputTable.classList.add('table')
+  outputTable.classList.add('table-dark')
+
+  const thead = document.createElement('thead')
+  const headRow = document.createElement('tr')
+  const headCell1 = document.createElement('th')
+  const headCell2 = document.createElement('th')
+  headCell1.innerText = '単語'
+  headCell2.innerText = '品詞'
+  headRow.appendChild(headCell1)
+  headRow.appendChild(headCell2)
+  thead.appendChild(headRow)
+  outputTable.appendChild(thead)
+
+  const tbody = document.createElement('tbody')
+  for (let term of r) {
+    const dataRow = document.createElement('tr')
+    const dataCell1 = document.createElement('th')
+    const dataCell2 = document.createElement('th')
+    dataCell1.innerText = term[0]
+    dataCell2.innerText = term[1]
+    dataRow.appendChild(dataCell1)
+    dataRow.appendChild(dataCell2)
+    tbody.appendChild(dataRow)
+  }
+  outputTable.appendChild(tbody)
+
+  outputElem.appendChild(outputTable)
+}
+
+async function initGlobalVars() {
+  model = await UnidicLiteImitator.create()
+  inputElem = document.getElementById('input-text')
+  outputElem = document.getElementById('output-container')
+}
+
+window.onload = () => {
+  initGlobalVars()
+}
+</script>
+</body>
+</html>
