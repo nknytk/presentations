@@ -2,7 +2,7 @@
 <html>
 <header>
    <meta charset="UTF-8">
-   <title>Unidic Lite Imitator Demo</title>
+   <title>Ma Imitator Demo</title>
    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
   <style>
@@ -35,47 +35,49 @@
 
 
   <main class="px-3">
-    <h1>Unidic Lite Imitator Demo</h1>
-    <p class="lead">辞書を使用せずにmecab + unidic_liteと概ね同じ単語分割と品詞推定(大分類まで)を実現します。</p>
-    <p class="lead">日本語文字列を入力して「Try」ボタンを押してください。</p>
+    <h1>Ma Imitator Demo</h1>
+    <p class="lead">辞書を使用せずに形態素解析器と概ね同じ単語分割と品詞推定(大分類まで)を実現します。</p>
+    <p class="lead">日本語文字列を入力してボタンを押してください。</p>
 
     <div class="mb-3">
-      <textarea maxlength="192" class="form-control form-center" id="input-text" placeholder="192文字以下の日本語文字列を入力してください"></textarea>
+      <textarea maxlength="256" class="form-control form-center" id="input-text" placeholder="256文字以下の日本語文字列を入力してください"></textarea>
     </div>
     <div id="control-container">
-      <button id="try" class="btn btn-lg btn-secondary fw-bold border-white bg-white" onclick="ma()" value="Try">Try</button>
+      <button id="try1" class="btn btn-secondary fw-bold border-white bg-white" onclick="ma('unidic_lite')">mecab + unidic_lite</button>
+      <button id="try2" class="btn btn-secondary fw-bold border-white bg-white" onclick="ma('sudachi_b')">Sudachi SplitMode.B + SudachiDict-full</button>
+      <button id="try3" class="btn btn-secondary fw-bold border-white bg-white" onclick="ma('sudachi_c')">Sudachi SplitMode.C + SudachiDict-full</button>
     </div>
     <div id="output-container" class="result-container mb-3">
     </div>
   </main>
 
   <footer class="mt-auto text-white-50">
-    <p>日本語版Wikipediaのデータを使用し、mecab + unidic_liteの出力を再現するよう学習させたモデルを使用しています。</p>
+    <p>日本語版Wikipediaのデータを使用し、形態素解析器の出力を再現するよう学習させたモデルを使用しています。</p>
     <p>詳細は<a target="blank" href="https://github.com/nknytk/ma-imitator">ma-imitator</a>を参照してください。</p>
   </footer>
 </div>
 
 <script>
-let model = null
+let models = null
 let inputElem = null
 let outputElem = null
 
-class UnidicLiteImitator {
+class MaImitator {
   UNKNOWN_KANJI_ID = 1
   UNKNOWN_NOKANJI_ID = 2
-  OUTPUT_NAME = '408'
   constructor() {}
 
-  static async create() {
-    const instance = new UnidicLiteImitator()
-    instance.ortSession = await ort.InferenceSession.create('./unidic_lite_imitator.onnx')
-    const configContent = await fetch('config.json')
+  static async create(configFilePath, modelFilePath, outputName) {
+    const instance = new MaImitator()
+    instance.ortSession = await ort.InferenceSession.create(modelFilePath)
+    const configContent = await fetch(configFilePath)
     instance.config = await configContent.json()
     instance.charIds = {}
     for (let i = 0; i < instance.config.chars.length; i++) {
       instance.charIds[instance.config.chars[i]] = i + 3
     }
     instance.pos = ['[PAD]', '前文字と同じ単語内'].concat(instance.config.parts_of_speech)
+    instance.outputName = outputName
     return instance
   }
 
@@ -83,7 +85,7 @@ class UnidicLiteImitator {
     text = text.trim()
     const modelInput = this.encode(text)
     const rawOutput = await this.ortSession.run(modelInput)
-    return this.decode(text, rawOutput[this.OUTPUT_NAME].data)
+    return this.decode(text, rawOutput[this.outputName].data)
   }
 
   encode(text) {
@@ -149,8 +151,8 @@ class UnidicLiteImitator {
   }
 }
 
-async function ma() {
-  const r = await model.parse(inputElem.value)
+async function ma(modelName) {
+  const r = await models[modelName].parse(inputElem.value)
 
   const prevTable = document.getElementById('output-table')
   if (prevTable) prevTable.remove()
@@ -188,7 +190,11 @@ async function ma() {
 }
 
 async function initGlobalVars() {
-  model = await UnidicLiteImitator.create()
+  models = {
+    unidic_lite: await MaImitator.create('unidic_lite.json', 'unidic_lite.onnx', '403'),
+    sudachi_b: await MaImitator.create('sudachi_b.json', 'sudachi_b.onnx', '403'),
+    sudachi_c: await MaImitator.create('sudachi_c.json', 'sudachi_c.onnx', '403'),
+  }
   inputElem = document.getElementById('input-text')
   outputElem = document.getElementById('output-container')
 }
