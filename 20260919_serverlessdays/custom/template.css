@@ -1,0 +1,446 @@
+/* =============================================================================
+   社内スライドテンプレート風テーマ for reveal.js 6
+   reveal.min.css → white.min.css の後ろで読み込むこと。
+
+   スライドの基準サイズは 1632 x 918 (16:9)。
+   1920x1080 のウィンドウに 85% で表示したときの実サイズで、その条件で
+   組んだ px 指定を reveal.js の transform による拡大縮小に乗せる。
+   slide.html 側で
+     Reveal.initialize({ width: 1632, height: 918, margin: 0.15,
+       minScale: 0.2, maxScale: 2, center: false })
+   を指定している前提。margin: 0.15 は表示領域の 15% を余白にし
+   (左右上下あわせて 85% に描画)、1920x1080 では scale=1 になって
+   見た目が変わらない。
+   ========================================================================== */
+
+/* 「1．」「2．」という和文の番号付きリスト用。
+   サンプルのマーカー幅は約 1.5em で、半角数字 + 全角ピリオドに一致する。 */
+@counter-style tpl-decimal-jp {
+  system: extends decimal;
+  suffix: "．";
+}
+
+:root {
+  /* --- 配色 ------------------------------------------------------------- */
+  --tpl-accent: #f97316;
+  --tpl-text: #333940;
+  --tpl-heading: #8b9096;
+  --tpl-page-number: #a3a8ad;
+  --tpl-card-bg: #ffffff;
+
+  /* 背景グラデーションの色。rgba() に渡すので "R, G, B" の形で持たせる。
+     色の中心は右上と左下の 2 つだけなので、色もこの 2 つ。値は PNG の
+     ノイズを拾わないよう、その色が乗っている領域全体を平均したもの。
+     スポイトで測った値に差があれば、この 2 行だけ直せば追従する。
+     アクアは青寄り (B > G) である点が重要。緑寄りにすると黄緑に転ぶ。 */
+  --tpl-aqua: 176, 248, 247;    /* #B0F8F7 右上コーナー */
+  --tpl-orange: 242, 171, 114;  /* #f2ab72 左下コーナー */
+
+  /* --- レイアウト --------------------------------------------------------
+     % 指定にすると padding の上下が「幅」基準になって崩れるため px で持つ。 */
+  --tpl-card-x: 64px;          /* カード左右の余白 */
+  --tpl-card-top: 108px;       /* 本文スライドのカード上端 */
+  --tpl-card-bottom: 80px;     /* カード下端 */
+  --tpl-card-pad-x: 40px;      /* カード内側の左右パディング */
+  /* 行ボックス基準のパディング。1 行目の文字の上端がサンプルと揃う値にしてある */
+  --tpl-card-pad-y: 21px;
+  --tpl-card-radius: 32px;
+
+  --tpl-title-card-top: 100px; /* 中扉スライドはカードが少し高い */
+  --tpl-title-card-bottom: 76px;
+
+  /* --- 左下のロゴ --------------------------------------------------------
+     res/logo_header.png はマーク + ワードマークの横長画像 (およそ 3.5:1)。
+     ワードマークは画像の高さの 6 割ほどを占めるので、サンプルの
+     ワードマーク高さ 27px に合わせて画像全体を 44px にしている。
+     幅は contain で高さ基準に縮む前提の置き場所なので、実描画幅より広めでよい。 */
+  --tpl-logo-src: url("../res/logo_header.png");
+  --tpl-logo-h: 44px;
+  --tpl-logo-w: 200px;
+
+  /* --- フォント ----------------------------------------------------------
+     Noto Sans JP は slide.html の Google Fonts で読み込む。
+     オフラインでも後続のフォールバックで崩れないようにしてある。 */
+  --tpl-font-jp: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif;
+  /* 「02」やページ番号の数字。サンプルの字幅は Montserrat のような
+     ジオメトリック系より狭く、和文フォントの数字とほぼ一致する。 */
+  --tpl-font-num: var(--tpl-font-jp);
+}
+
+/* -----------------------------------------------------------------------------
+   white テーマの変数を上書き
+   -------------------------------------------------------------------------- */
+.reveal-viewport,
+.reveal {
+  --r-background-color: #F4FEFF;
+
+  --r-main-font: var(--tpl-font-jp);
+  --r-main-font-size: 32px;
+  --r-main-color: var(--tpl-text);
+  /* 余白は行送りだけで作るので、要素ごとのマージンは使わない */
+  --r-block-margin: 0;
+
+  --r-heading-font: var(--tpl-font-jp);
+  --r-heading-color: var(--tpl-text);
+  --r-heading-font-weight: 700;
+  --r-heading-line-height: 1.4;
+  --r-heading-letter-spacing: normal;
+  --r-heading-margin: 0;
+  /* 日本語テンプレートなので "SalesForce" が大文字化されないようにする */
+  --r-heading-text-transform: none;
+  --r-heading-text-shadow: none;
+  --r-heading1-text-shadow: none;
+
+  --r-heading1-size: 60px;
+  --r-heading2-size: 34px;
+  --r-heading3-size: 30px;
+  --r-heading4-size: 28px;
+
+  --r-link-color: var(--tpl-accent);
+  --r-link-color-hover: #ffa257;
+  --r-link-color-dark: #d95f0a;
+  --r-selection-background-color: rgba(249, 115, 22, 0.25);
+  --r-selection-color: var(--tpl-text);
+}
+
+/* -----------------------------------------------------------------------------
+   背景 : 白地に水色とオレンジのメッシュグラデーション
+
+   16:9 のスライド領域ではなくウィンドウ全体 (.reveal-viewport) に敷くので、
+   どんなアスペクト比でも letterbox の白帯が出ない。比率が変わっても色が
+   意図した隅に残るよう、各グラデーションの中心は辺か角に置き、半径は
+   ウィンドウの幅・高さに対する % で指定して一緒に伸縮させている。
+
+   色の乗り方をサンプルのような大きなにじみにするため、中心付近に濃さを
+   保つ台地を作ってから長い裾で消す 4 段の階調にしている。単純に中心から
+   直線的に薄くすると、隅の一番濃くあってほしい部分まで薄まってしまう。
+
+   サンプルの色の中心は右上と左下の 2 つだけで、他は白へ溶けるだけ。
+   途中に中心を足すと、暖色と寒色が重なった領域が黄緑に転んで一気に
+   別物になるので、この 2 つ以外の中心を増やさないこと。実際 2 つの
+   半径は互いに届かないので、重なって濁る領域がどこにも生じない。
+
+   配置は全スライド共通。表紙 (p3)・中扉 (p2)・本文 (p1) はいずれも
+   同じ絵柄なので、スライド種別で出し分ける必要はない。
+   -------------------------------------------------------------------------- */
+.reveal-viewport {
+  background-color: #F3FEFF;
+  background-image:
+    /* 右上のアクア。上辺は x=45%、右辺は y=70% で白に消える */
+    radial-gradient(60% 70% at 100% 0%,
+      rgba(var(--tpl-aqua), 1) 0%, rgba(var(--tpl-aqua), 0.92) 18%,
+      rgba(var(--tpl-aqua), 0.38) 48%, rgba(var(--tpl-aqua), 0) 100%),
+    /* 左下のオレンジ。下辺は x=48%、左辺は y=34% で白に消える */
+    radial-gradient(60% 70% at 0% 100%,
+      rgba(var(--tpl-orange), 1) 0%, rgba(var(--tpl-orange), 0.92) 18%,
+      rgba(var(--tpl-orange), 0.38) 48%, rgba(var(--tpl-orange), 0) 100%);
+  background-repeat: no-repeat;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+/* -----------------------------------------------------------------------------
+   スライドの基本レイアウト
+   -------------------------------------------------------------------------- */
+.reveal .slides > section,
+.reveal .slides > section > section {
+  box-sizing: border-box;
+  height: 100%;
+  top: 0;
+  padding:
+    calc(var(--tpl-card-top) + var(--tpl-card-pad-y))
+    calc(var(--tpl-card-x) + var(--tpl-card-pad-x))
+    calc(var(--tpl-card-bottom) + var(--tpl-card-pad-y));
+  text-align: left;
+  font-weight: 400;
+  line-height: 1.85;
+  /* ::before のカード (z-index:-1) をこのセクションの中に閉じ込める */
+  isolation: isolate;
+}
+
+/* 白い角丸カード。マークアップを足さずに済むよう擬似要素で描く */
+.reveal .slides > section::before,
+.reveal .slides > section > section::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: var(--tpl-card-top) var(--tpl-card-x) var(--tpl-card-bottom);
+  background: var(--tpl-card-bg);
+  border-radius: var(--tpl-card-radius);
+}
+
+/* 左下のロゴ。左端はカードの左端に揃え、ワードマークの上下中央が
+   サンプルと同じ高さ (下端から 44px) に来るように置いている。
+   background-size: contain なので実際の描画幅は高さから決まる。 */
+.reveal .slides > section::after,
+.reveal .slides > section > section::after {
+  content: "";
+  position: absolute;
+  left: var(--tpl-card-x);
+  bottom: calc(44px - var(--tpl-logo-h) / 2);
+  width: var(--tpl-logo-w);
+  height: var(--tpl-logo-h);
+  background-image: var(--tpl-logo-src);
+  background-position: left center;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* -----------------------------------------------------------------------------
+   本文スライドの見出し (カードの外・左上)
+   -------------------------------------------------------------------------- */
+.reveal .slides section h2 {
+  position: absolute;
+  top: 38px;
+  left: var(--tpl-card-x);
+  right: var(--tpl-card-x);
+  margin: 0;
+  font-size: var(--r-heading2-size);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--tpl-heading);
+}
+
+/* -----------------------------------------------------------------------------
+   本文
+   サンプルは段落もリスト項目も同じ行送り (font-size の 1.85 倍) で並ぶので、
+   マージンは付けずに行送りだけで間隔を作る。
+   -------------------------------------------------------------------------- */
+.reveal .slides section p {
+  margin: 0;
+  line-height: 1.85;
+}
+
+.reveal .slides ol,
+.reveal .slides ul {
+  display: block;
+  margin: 0;
+  /* 「1．」がぶら下がるぶんの幅 */
+  padding-left: 2.7em;
+  line-height: 1.85;
+  text-align: left;
+}
+
+.reveal .slides ol {
+  list-style: tpl-decimal-jp;
+}
+
+.reveal .slides ul {
+  list-style: disc;
+}
+
+.reveal .slides li {
+  margin: 0;
+  padding-left: 0;
+}
+
+.reveal .slides li > ol,
+.reveal .slides li > ul {
+  padding-left: 1.4em;
+}
+
+.reveal .slides strong,
+.reveal .slides b {
+  font-weight: 700;
+}
+
+/* -----------------------------------------------------------------------------
+   中扉スライド : <section class="title">
+   -------------------------------------------------------------------------- */
+.reveal .slides > section.title {
+  /* display を変えずに縦中央寄せできるので、reveal の表示切替と衝突しない */
+  align-content: center;
+  text-align: center;
+  /* サンプルの中扉は文字列がカードの中央よりやや上にあるため、
+     下パディングを上より 76px 多くして重心を上げている */
+  padding:
+    calc(var(--tpl-title-card-top) + 40px)
+    calc(var(--tpl-card-x) + 56px)
+    calc(var(--tpl-title-card-bottom) + 140px);
+}
+
+.reveal .slides > section.title::before {
+  inset: var(--tpl-title-card-top) var(--tpl-card-x) var(--tpl-title-card-bottom);
+}
+
+.reveal .slides > section.title .orange {
+  margin: 0 0 64px;
+  font-family: var(--tpl-font-num);
+  font-size: 100px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--tpl-accent);
+}
+
+.reveal .slides > section.title h1 {
+  margin: 0;
+  font-size: var(--r-heading1-size);
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.15em;
+  /* letter-spacing は最後の字の後ろにも入るので、その分だけ中央に戻す */
+  text-indent: 0.15em;
+  color: var(--tpl-text);
+}
+
+/* -----------------------------------------------------------------------------
+   ページ番号
+
+   .slide-number は .slides の外側にあり reveal の transform がかからない。
+   ウィンドウを 16:9 にフィットさせた領域を自前で求めて位置と文字サイズを合わせる。
+   係数の 1280 / 720 は、1920x1080 で right 48px / bottom 43.5px / 14px相当
+   になるように選んだもの。
+   -------------------------------------------------------------------------- */
+.reveal-viewport {
+  --tpl-slide-w: min(100vw, 100vh * 16 / 9);
+  --tpl-slide-h: min(100vh, 100vw * 9 / 16);
+}
+
+.reveal .slide-number {
+  right: calc((100vw - var(--tpl-slide-w)) / 2 + var(--tpl-slide-w) * 32 / 1280);
+  bottom: calc((100vh - var(--tpl-slide-h)) / 2 + var(--tpl-slide-h) * 29 / 720);
+  padding: 0;
+  background: none;
+  font-family: var(--tpl-font-num);
+  font-size: calc(var(--tpl-slide-h) * 14 / 720);
+  font-weight: 500;
+  color: var(--tpl-page-number);
+}
+
+.reveal .slide-number a {
+  color: inherit;
+}
+
+/* 中扉が表示されている間はページ番号を隠す */
+.reveal-viewport:has(.slides > section.title.present) .slide-number,
+.reveal:has(.slides > section.title.present) .slide-number {
+  opacity: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   ユーティリティ
+   -------------------------------------------------------------------------- */
+
+/* カードなしの全面スライド。JavaScript のデモを大きく見せたいときに使う */
+.reveal .slides > section.plain {
+  padding: 64px 80px;
+}
+
+.reveal .slides > section.plain::before {
+  inset: 24px;
+}
+
+/* 中扉・全面スライド・明示的に外したいスライドではロゴを出さない
+   (中扉のページ番号はページ番号側のルールで消している) */
+.reveal .slides > section.title::after,
+.reveal .slides > section.plain::after,
+.reveal .slides > section.no-footer::after {
+  display: none;
+}
+
+.reveal .slides .accent,
+.reveal .slides .highlight-color-1 {
+  color: var(--tpl-accent);
+}
+
+/* リスト項目の中で 1 段深く折り返したいとき */
+.reveal .slides .indent {
+  padding-left: 1.4em;
+}
+
+.reveal .slides .indent-2 {
+  padding-left: 2.8em;
+}
+
+.reveal .slides table {
+  font-size: 26px;
+  max-width: 100%;
+}
+
+/* 画像はカード幅をはみ出さない。高さ指定があるものは object-fit で縦横比を保つ。
+   数値は 1920x1080 ウィンドウで vw/vh 指定していたときのピクセル値。 */
+.reveal .slides img {
+  max-width: 100%;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.reveal .slides img.fig-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.reveal .slides img.fig-h-58 {
+  max-height: 626px;
+  width: auto;
+}
+
+.reveal .slides img.fig-h-20 {
+  max-height: 216px;
+  width: auto;
+}
+
+.reveal .slides img.fig-h-20 {
+  max-height: 324px;
+  width: auto;
+}
+
+.reveal .slides img.fig-w-70 {
+  width: 1440px;
+  height: auto;
+}
+
+.reveal .slides blockquote.quote-wide {
+  width: 1152px;
+  max-width: 100%;
+}
+
+.reveal .slides pre.code-tall {
+  height: 610px;
+}
+
+.reveal .slides pre.code-tall code {
+  max-height: 100%;
+  height: 100%;
+}
+
+span.inline-code {
+  background-color: #F4F3F3;
+  color: #B7585E;
+}
+
+/* -----------------------------------------------------------------------------
+   コード (デモ用)
+   -------------------------------------------------------------------------- */
+.reveal .slides pre {
+  width: 100%;
+  margin: 12px 0;
+  box-shadow: none;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.reveal .slides pre code {
+  padding: 20px 24px;
+  border-radius: 12px;
+  max-height: 440px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.reveal .slides pre code.hljs {
+  background: #272822;
+  color: #ddd;
+}
+
+/* -----------------------------------------------------------------------------
+   align-content による縦中央寄せに未対応のブラウザ向けフォールバック
+   -------------------------------------------------------------------------- */
+@supports not (align-content: center) {
+  .reveal .slides > section.title {
+    padding-top: 198px;
+  }
+}

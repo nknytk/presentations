@@ -1,0 +1,550 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+
+<head>
+<meta charset="UTF-8">
+<title>ServerlessDays 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="reveal/reveal.min.css" />
+<link rel="stylesheet" href="reveal/white.min.css" />
+<link rel="stylesheet" href="reveal/monokai.css" />
+<link rel="stylesheet" href="custom/template.css" />
+<script src="reveal/reveal.min.js"></script>
+<script src="reveal/highlight.min.js"></script>
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<section class="title">
+  <h1>既存のWebアプリを<br/>Cloud Runに乗せ換えた時の<br/>躓きと学び</h1>
+  <img class="fig-h-20" src="res/qr.png"/>
+  <p>株式会社アイリッジ 中野 豊</p>
+  <p>2026-09-19 ServerlessDays Tokyo 2026</p>
+</section>
+
+<section>
+  <h2>もくじ</h2>
+  <ol>
+    <li>何を、何のためにCloud Run に移設しようとしたか</li>
+    <li>移設時に発生した問題と解決策</li>
+    <li>App Engine と Cloud Run のどちらを選択するか</li>
+  </ol>
+</section>
+
+<section class="title">
+  <h1>何を、何のために<br/>Cloud Run に<br/>移設しようとしたか</h1>
+</section>
+
+<section>
+  <h2>会社の事業</h2>
+  <div>
+    <ul>
+      <li>スマホアプリ開発・運用のためのプラットフォームを提供</li>
+      <li>導入アプリ数は数百、積み上げMAUは1億超</li>
+    </ul>
+    <img src="res/20260919_service.png"/>
+  </div>
+</section>
+
+<section>
+  <h2>データ基盤概略図</h2>
+  <div>
+    BigQueryを中心に置き、多数のデータ入出力経路が存在<br/>
+    <img class="fig-h-58 fig-center" src="res/architecture.png">
+  </div>
+</section>
+
+<section>
+  <h2>データ基盤の管理APIs</h2>
+  <div>
+    <ul>
+      <li>各経路の内部向け/外部向けに、データ入出力用/管理用のWeb APIが存在</li>
+      <li>普段はほとんどリクエストがないが、急に並列リクエストが来る
+        <ul>
+          <li>お客様からのデータインポート・エクスポートリクエスト</li>
+	  <li>定時バッチからの利用<br/>
+            <img class="fig-h-20" src="res/api-rps.png">
+          </li>
+        </ul>
+      </li>
+      <li>最大負荷を捌ける数+1台のGCE(VM)のクラスタを常時稼働</li>
+      <li>Python + Flask + Gunicorn または Python + FastAPI + uvicorn で実装</li>
+      <li>Dockerコンテナとしてデプロイ</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>管理APIの課題</h2>
+  <div>
+    <h3>コスト</h3>
+    小さなクラスタのコストが積み重なって高コストになっていた
+    <ul>
+      <li>APIの数が多い =&gt; クラスタの数が多い</li>
+      <li>環境の数が多い
+        <ul>
+          <li>開発環境</li>
+          <li>ステージング環境</li>
+          <li>お客様向けサンドボックス環境 (社内としては商用環境の扱い)</li>
+          <li>本番環境</li>
+        </ul>
+      </li>
+    </ul>
+    <br/>
+    <h3>運用</h3>
+    OSのセキュリティ更新・EOLの管理が面倒
+  </div>
+</section>
+
+<section>
+  <h2>課題の解決策</h2>
+  <div>
+    <h3>サーバレス基盤に移設しよう</h3>
+    <ul>
+      <li>起動・スケーリングの速さを活かし、普段はコンテナを0台にして、<br/>リクエストに応じてスケールさせればコスト問題は解決</li>
+      <li>OS管理も不要になる</li>
+      <li>過去に<a target="blank" href="https://www.slideshare.net/slideshow/30mau78pptx/266056764">常駐Airflowのバッチ基盤を Workflows + Cloud Run Functions で置換し、<br/>
+          コスト・性能・運用性を大幅に改善</a>した成功体験がある</li>
+      <li>スケーリング速度に優れ既存Docker Imageの流用が可能な Cloud Run を選択
+        <table>
+          <thead><tr><th></th><th>App Engine (Standard)</th><th>App Engine (Flexible)</th><th>Cloud Run</th></tr></thead>
+	  <tbody>
+            <tr><td>スケーリング速度</td><td>○</td><td>△</td><td>○</td></tr>
+            <tr><td>ゼロスケール</td><td>○</td><td>☓</td><td>○</td></tr>
+	    <tr><td>Dockerコンテナのデプロイ</td><td>☓</td><td>○</td><td>○</td></tr>
+	    <tr><td>ソースコードのデプロイ</td><td>○</td><td>☓</td><td>○</td></tr>
+          </tbody>
+        </table>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="title">
+  <h1>移設時に発生した問題と解決策</h1>
+</section>
+
+<section>
+  <h2>Cloud Run に移設した結果</h2>
+  <div>
+    <ul>
+      <li>移設自体は簡単だった
+        <ul>
+          <li>Docker Imageのデプロイ先を変えるだけ</li>
+        </ul>
+      </li>
+      <li>機能テストも全く問題なく通った</li>
+      <li>しかし、運用テストではエラーが多発
+        <ul>
+          <li><span class="inline-code">The request was aborted because there was no available instance</span><br/>による429,500エラー</li>
+	  <li>Gunicornの<br/>
+            <span class="inline-code">[CRITICAL] WORKER TIMEOUT</span><br/>
+            <span class="inline-code">[ERROR] Worker was sent SIGKILL! Perhaps out of memory?</span>
+	  </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>The request was aborted because there was no available instance</h2>
+  <div>
+    <img class="fig-w-70 fig-center" src="res/cloud-run-errors.png"/>
+  </div>
+</section>
+
+<section>
+  <h2>429, 500エラーの原因</h2>
+  <div>
+     <ul>
+       <li>インスタンスが無いと言われている<br/>
+         <ul>
+           <li>十分な最大インスタンス数を指定したはずなのに</li>
+         </ul>
+       </li>
+       <li><a targe="blank" href="https://docs.cloud.google.com/run/docs/troubleshooting?hl=ja#429-max-instances">公式ドキュメント</a>で原因の候補に挙げられているのは
+         <blockquote class="quote-wide" cite="https://docs.cloud.google.com/run/docs/troubleshooting?hl=ja#429-max-instances">
+          <ul>
+            <li>トラフィックが急増している。</li>
+            <li>コールド スタート時間が長い。</li>
+            <li>リクエスト処理時間が長い、またはリクエスト処理時間が急増している。</li>
+            <li>サービスがコンテナ インスタンスの上限（HTTP 429）に達した。</li>
+            <li>Cloud Run サービスに起因する一時的な要因。</li>
+          </ul>
+       </blockquote>
+       </li>
+       <li>「コールド スタート時間が長い」が原因? <br/>
+         <ul>
+           <li>VM時代は常時稼働前提だったので、コンテナ起動時間は考慮されていなかった</li>
+         </ul>
+       </li>
+  </div>
+</section>
+
+<section>
+  <h2>VM時代のDockerfile</h2>
+  <div>
+  パッケージ管理に利用していたPoetryが、起動時間の悪化を招いていた
+  <pre class="code-tall">
+    <code class="language-dockerfile" data-trim>
+FROM python3-slim
+
+WORKDIR /var/www
+COPY src /var/www
+# Python標準のpipではなく、Poetryでパッケージを管理していた
+# Poetryと依存ライブラリが70MB以上のストレージを消費
+RUN pip install poetry
+# Poetryは、デフォルト設定では依存ライブラリをインストールする時にvirtualenvを自動作成する
+# virtualenvが15MB以上のストレージを消費
+RUN poetry install
+# poetry run アプリケーションでは、Pythonが2重起動する
+# 1. Pythonが起動してPoetryをロードし、Poetryがアプリケーション起動コマンドを組み立て
+# 2. Poetryが起動コマンドを実行し、Pythonアプリケーションが起動
+ENTRYPOINT ["poetry", "run", "gunicorn"]
+CMD ["--config", "/var/www/gunicorn_settings.py"]
+    </code>
+  </pre>
+  </div>
+</section>
+
+<section>
+  <h2>Cloud Run 向けのDockerfile</h2>
+  <div>
+  Poetryによるパッケージ管理は維持しつつ、イメージサイズを縮小し起動コマンドを短縮
+  <pre class="code-tall">
+    <code class="language-dockerfile" data-trim>
+FROM python3-slim AS builder
+
+WORKDIR /var/www
+COPY src /var/www
+RUN pip install poetry poetry-plugin-export
+# 依存ライブラリをPoetryからpip用の形式でエクスポート
+RUN poetry export -f requirements.txt -o /var/www/requirements.txt
+
+# デプロイ用イメージにはPoetryをインストールしない
+FROM python3-slim
+
+WORKDIR /var/www
+COPY src /var/www
+COPY --from=builder /var/www/requirements.txt /var/www/requirements.txt
+# 隔離されたコンテナの中なので、さらにvirtualenvで環境を隔離する必要はない
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
+# アプリケーション起動コマンドを直接実行
+ENTRYPOINT ["gunicorn"]
+CMD ["--config", "/var/www/gunicorn_settings.py"]
+    </code>
+  </pre>
+</section>
+
+<section>
+  <h2>コールドスタート時間短縮の結果</h2>
+  <div>
+    効果はアプリケーションにより異なるが、下記の例では 約3.5秒 =&gt; 約0.8秒<br/>
+    <img src="res/container-startup.png"/><br/>
+    エラーの頻度は減少したものの、完全解消には至らなかった
+  </div>
+</section>
+
+<section>
+  <h2>429, 500エラーの原因(2)</h2>
+  <div>
+    <ul>
+       <li>インスタンスが無いと言われている<br/>
+         <ul>
+           <li>十分な最大インスタンス数を指定したはずなのに</li>
+           <li>起動時間が長過ぎる問題は解消したはずなのに</li>
+         </ul>
+       </li>
+      <li><a target="blank" href="https://docs.cloud.google.com/run/docs/about-concurrency?hl=ja">ドキュメント</a>によると、インスタンスのCPU使用率が高い場合、<br/>そのインスタンスにはリクエストを割り当てない
+        <ul>
+          <li>起動直後のインスタンスはコンテナ起動のCPU負荷で高負荷と判断され、<br/>さらに次のインスタンス起動が必要と判定される?</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>インスタンス不足解消: 最大インスタンス数を大きく設定する</h2>
+  <div>
+    <ul>
+      <li>最大インスタンス数をかなり大きめに設定してみた</li>
+      <li>429, 500エラーは解消した</li>
+      <li>起動負荷が次のインスタンス起動を招く状況への対処が必要らしい</li>
+      <li>実際に、インスタンスはリクエスト開始直後に多めに起動し、すぐに減るような挙動
+        <img src="res/num-instances.png"/>
+      </li>
+      <li>最大インスタンス数を大きめに設定しても、<br/>
+          不要になったインスタンスはすぐに開放されるので、高額課金の心配はない</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Gunicornの WORKER TIMEOUT, SIGKILL</h2>
+  <div>
+  <img class="fig-w-70 fig-center" src="res/gunicorn-errors.png"/>
+</section>
+
+<section>
+  <h2>Gunicronのエラー原因</h2>
+  <div>
+  ソースコードの<a target="blank" href="https://github.com/benoitc/gunicorn/blob/26.2.1/gunicorn/arbiter.py#L241">該当箇所</a>を確認すると、Gunicornのワーカー死活監視は<br/>
+  「<a target="blank" href="https://docs.cloud.google.com/run/docs/tips/general?hl=ja#background-activity">バックグラウンドアクティビティ</a>」相当の実装<br/>
+  バックグラウンドアクティビティは、リクエスト時のみCPUを割り当てる場合は回避すべきとされている<br/>
+  <img class="fig-w-70 fig-center" src="res/gunicorn-worker-management.png"/>
+  </div>
+</section>
+
+<section>
+  <h2>Gunicornのエラー原因</h2>
+  <div>
+  リクエスト時のみCPUを割り当てる設定のCloud Runで動作させた場合に<br/>
+  リクエスト間隔が空くと、正常稼働中のワーカーがタイムアウトしたと誤認されてしまう<br/>
+  <br/>
+  <ol>
+    <li>リクエストがなくなる</li>
+    <li>インスタンスへのCPU割当がなくなり、ワーカーの時刻更新とワーカー監視のループが停止</li>
+    <li>リクエストが発生</li>
+    <li>インスタンスにCPUが割り当てられ、ワーカーの時刻更新とワーカー監視のループが再開</li>
+    <li>ワーカー監視が先に実行された場合、全ワーカーの最終更新時刻はCPU割当停止前の時刻</li>
+    <li>マスターは全ワーカーがタイムアウトしたと誤認</li>
+    <li>マスターは全ワーカーをkillし、新たなワーカーを起動</li>
+  </ol>
+  </div>
+</section>
+
+<section>
+  <h2>Gunicornのタイムアウト誤認の影響</h2>
+  <div>
+  ワーカーが誤ってkillされることで、2つの問題が発生<br/>
+  <br/>
+  <h3>応答遅延</h3>
+  <ul>
+    <li>一時的にワーカー数が0になり、ワーカー起動までリクエストが待たされ、応答が遅延する</li>
+    <li>確実に発生</li>
+  </ul>
+  <br/>
+  <h3>応答失敗</h3>
+  <ul>
+    <li>リクエストを受け付けたワーカーが応答を返す前にkillされる</li>
+    <li>運が悪いと発生</li>
+  </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Gunicornのタイムアウト誤認解消方法</h2>
+  <div>
+    <ul>
+      <li>リクエストタイムアウトを0(無制限)に設定すれば解消する(した)
+        <ul>
+          <li>リクエストタイムアウトのチェックが行われなくなるため</li>
+        </ul>
+      </li>
+      <li>実際、<a target="blank" href="https://docs.cloud.google.com/run/docs/tips/python?hl=ja#optimize_gunicorn">Cloud Run 公式のgunicorn利用ガイド</a>では(説明なく)timeoutを0に設定している</li>
+      <li>しかし、リクエストタイムアウトのチェックを止めると<br/>
+        本当にハングアップしたワーカーを排除できなくなってしまう
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Gunicorn timeout=0 の場合のワーカー死活監視</h2>
+  <div>
+    <ul>
+      <li>Cloud Run のヘルスチェック設定を、特定のエンドポイントへのHTTPリクエストに変更する
+      <ul>
+        <li>デフォルトではTCPのポート確認</li>
+	<li><a target="blank" href="https://docs.cloud.google.com/run/docs/configuring/healthchecks?hl=ja#liveness-probes">ライブネスプローブ</a>で設定変更できる</li>
+        <li>アプリケーションがハングアップして応答できなくなった場合は、<br/>コンテナインスタンスごと入れ替わる</li>
+      </ul>
+      <li>Cloud Runのリクエストタイムアウトは<br/>"コンテナからの応答を待つのを止めてエラーを返す"<br/>であり、コンテナ内の処理は止まらない
+	<ul>
+          <li>コンテナ内で無限待機・無限ループのような状態が発生すると、<br/>偶然コンテナが入れ替わるまで、その処理は残り続ける(実験済)</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>VM から Cloud Run に移行する時に考慮が必要な点のまとめ</h2>
+  <div>
+    <ul>
+      <li>コンテナ起動時間を短縮する
+        <ul>
+          <li>イメージサイズの縮小</li>
+          <li>起動処理の短縮</li>
+          <li>常時起動前提では、コンテナ起動時間に意識が向いていないことがある</li>
+        </ul>
+      </li>
+      <li>最大インスタンス数は多めに設定する
+        <ul>
+          <li>インスタンス起動負荷が次のインスタンス起動を呼ぶので、<br/>起動の瞬間は多数のインスタンスが必要になることがある</li>
+        </ul>
+      </li>
+      <li>バックグラウンドループがないか確認する
+        <ul>
+          <li>CPUの割当剥奪・再開が誤動作の原因になり得る</li>
+          <li>自身が実装した処理だけでなく、ミドルウェア・ライブラリも要確認</li>
+        </ul>
+      </li>
+      <li>ヘルスチェックエンドポイントを使用したライブネスプローブを設定する</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>ノウハウが確立した?</h2>
+  <div>
+  VM上のアプリケーションをCloud Runに移設する方法が分かった<br/>
+  これで全てのアプリをCloud Runに移設でき...てはいない
+  </div>
+</section>
+
+<section>
+  <h2>未解決の課題</h2>
+  <div>
+    <ul>
+      <li>Cloud Run では、HTTP/1 ではリクエスト・レスポンスともにサイズ制限がある
+        <ul>
+          <li>リクエスト: 上限32MiB</li>
+	  <li>レスポンス: <span class="inline-code">Transfer-Encoding: chunked</span>または<br/>ストリーミング メカニズムを使用しない場合は 32 MiB</li>
+	</ul>
+      </li>
+      <li>HTTP/2 ではサイズ制限はない</li>
+      <li>弊社には HTTP/1 で大きなリクエスト・レスポンスを扱うAPIが存在する</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>検討中の対応策</h2>
+  <div>
+    <ul>
+      <li>HTTP/2対応のWSGIサーバに変更する
+        <ul>
+          <li>Gunicornは現時点でHTTP/2サポートはベータ扱い</li>
+          <li>ベータ機能を本番導入する? 正式にHTTP/2をサポートする製品を探す?</li>
+        </ul>
+      </li>
+      <li>NginxでHTTP/2リクエストを受け、HTTP/1に変換してアプリにリクエストを転送
+        <ul>
+          <li>Cloud Run ではサイドカーコンテナを使えるので可能なはず</li>
+          <li>せっかくサーバレス化するのにNginxの面倒見るの?</li>
+        </ul>
+      </li>
+      <li>データをGCSに置き、署名付きURLを発行する
+        <ul>
+          <li>ドメインが<span class="inline-code">storage.googleapis.com</span>になるのは、<br/>ドメインごとに通信許可設定をしているお客様に許容されるか?</li>
+          <li>GCSの前段にCloud CDNを置けば、カスタムドメインも実現できるかも?</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>検討状況</h2>
+  <div>
+    <ul>
+      <li>他の開発・運用で手一杯になり、検討は止まっている</li>
+      <li>とりあえず、Cloud Run への移設には何かしらの改修が必要なことは分かった</li>
+      <li>おすすめの方法があれば教えてください</li>
+    </ul>
+  </div>
+</section>
+
+<section class="title">
+  <h1>App Engine と Cloud Run の<br/>どちらを選択するか</h1>
+</section>
+
+<section>
+  <h2>現時点での選択はCloud Run</h2>
+  <div>
+    Dockerを使用せずソースコードを直接デプロイする場合でも、<br/>
+    VPCへの直接接続が正式にサポートされている Cloud Run を選択している
+    <table>
+      <thead><tr><th></th><th>App Engine (Standard)</th><th>App Engine (Flexible)</th><th>Cloud Run</th></tr></thead>
+      <tbody>
+        <tr><td>スケーリング速度</td><td>○</td><td>△</td><td>○</td></tr>
+        <tr><td>ゼロスケール</td><td>○</td><td>☓</td><td>○</td></tr>
+        <tr><td>Dockerコンテナのデプロイ</td><td>☓</td><td>○</td><td>○</td></tr>
+        <tr><td>ソースコードのデプロイ</td><td>○</td><td>☓</td><td>○</td></tr>
+        <tr><td>VPCへの直接接続</td><td>△</td><td>○</td><td>○</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>VPC Direct Egress</h2>
+  <div>
+    <ul>
+      <li>App Engine (Standard) と Cloud Run はどちらもVPC外のサービス</li>
+      <li>従来は、VPC内の Cloud SQL や Memory Store にアクセスするには<br/>
+          <a target="blank" href="https://docs.cloud.google.com/vpc/docs/serverless-vpc-access?hl=ja">サーバレス VPC アクセス</a> コネクタ が必要だった</li>
+      <li>Cloud Run では、インスタンスがVPCの内部IPアドレスを持ち<br/>直接VPC内のリソースに接続できる
+          <a target="blank" href="https://docs.cloud.google.com/run/docs/configuring/shared-vpc-direct-vpc?hl=ja">VPC Direct 下り</a>を利用可能</li>
+      <li>App Engine (Standard) では、VPC Direct 下り はまだプレビュー段階</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>サーバレス VPC アクセス コネクタ</h2>
+  <div>
+    <ul>
+      <li>実態は常時起動のVMクラスタ
+        <ul>
+          <li>実際の利用有無に関わらず常にVM料金が発生する</li>
+        </ul>
+      </li>
+      <li>負荷が増えると、設定された最大台数まで自動的に増える</li>
+      <li>一度増えた台数は減らない</li>
+      <li>時々メンテナンスで一時的な通信遅延・通信断が発生する
+        <ul>
+          <li>おそらく2週に1度くらいのペースでメンテナンスしている</li>
+        </ul>
+      </li>
+    </ul>
+    <br/>
+    VPCに直接接続する選択肢を取れるなら、直接接続する方が良い<br/>
+    既存の App Engine 上のWebアプリケーションも、Cloud Run への移設を検討中
+  </div>
+</section>
+
+<section class="title">
+  <h1>Q&A</h1>
+  <br/>
+  <p>質問、コメント等あればお気軽にどうぞ!</p>
+</section>
+
+</div>
+</div>
+<script>
+Reveal.initialize({
+  /* 1920x1080 ウィンドウの 85% = 1632x918。このサイズで CSS の px を組み、
+     他のウィンドウでは reveal.js が全体を拡大縮小する。
+     margin は「余白の合計割合」なので 0.15 で描画領域が 85% になる。 */
+  width: 1786,
+  height: 972,
+  margin: 0,
+  minScale: 0.2,
+  maxScale: 2,
+  center: false,
+  controls: true,
+  slideNumber: true,
+  hash: true,
+  plugins: [ RevealHighlight ]
+})
+</script>
+</body>
+<html>
